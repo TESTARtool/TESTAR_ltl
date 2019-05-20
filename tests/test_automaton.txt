@@ -1,0 +1,24 @@
+HOA: v1
+States: 2
+Start: 1
+name: "Hello world"
+AP: 2 "a" "b"
+Acceptance: 1 Inf(0)
+--BODY--
+State: 0 {0}
+[t] 0
+State: 1
+[1] 0
+[0&!1] 1
+--END--
+HOA: v1
+States: 1
+Start: 0
+name: "Hello world 2"
+AP: 2 "a" "b"
+Acceptance: 2 Inf(0)&Inf(1)
+--BODY--
+State: 0 {0}
+[t] 0 {1}
+[0&!1] 0
+--END--
