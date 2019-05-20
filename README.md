@@ -1,0 +1,2 @@
+# testar-ltl
+modelcheck
