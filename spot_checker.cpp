@@ -12,6 +12,10 @@
 #include <ctime>
 #include <sstream>
 #include <fstream>
+#include<experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+//#include<filesystem>
+//namespace fs = std::filesystem;
 
 std::string aut_line;
 std::ofstream aut_file;
@@ -20,16 +24,32 @@ std::ofstream results_file;
 
 
 std::chrono::system_clock::time_point clock_start, clock_end;
-std::string automatonfile;
-std::string result;
+std::string automaton_filename;
+std::string resultfilename;
+std::string formulafilename;
+std::string modelfilename;
 std::string formula;
-std::string formulafile;
 spot::parsed_aut_ptr pa;
 spot::bdd_dict_ptr bdd;
 
 
 void setup_spot(){
     bdd = spot::make_bdd_dict();
+}
+
+
+void copyAutomatonFile(std::istream& autin, std::string copyTofilename){
+
+    std::string aut_line;
+    std::remove(copyTofilename.c_str());
+    aut_file.open(copyTofilename.c_str());
+    while (  getline(autin , aut_line)) {
+        aut_file << aut_line << std::endl;
+        if (aut_line == "EOF_HOA") {
+            aut_file.close();
+            break;
+        }
+    }
 }
 int  load_automaton(const std::string& hoafile)
 {
@@ -66,7 +86,7 @@ std::string getAutomatonTitle(spot::twa_graph_ptr& aut){
 }
 std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
 
-    std::ostringstream sout;
+    std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== start of checking property: '" << formula << "' on automaton '"<<getAutomatonTitle(aut) <<"' === "<<log_elapsedtime()<<"\n";
     spot::formula f = spot::parse_formula(formula);
     spot::formula nf = spot::formula::Not(f);
@@ -78,12 +98,28 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
         sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
     }
     else {
-    af = spot::translator(bdd).run(f);
-    run = aut->intersecting_run(af);
-    sout << "PASS, with witness: \n" << *run;
+        af = spot::translator(bdd).run(f);
+        run = aut->intersecting_run(af);
+        sout << "PASS, with witness: \n" << *run;
     }
     sout << "=== end of checking property: '" << formula <<  "' on automaton '"<<getAutomatonTitle(aut) <<"' === "<<log_elapsedtime()<<"\n";
     return sout.str();
+}
+
+void check_collection(std::istream& col_in, std::ostream& out, std::string results_filename){
+    std::ofstream results_file;
+    std::string formula_result;
+    std::remove(results_filename.c_str());
+    results_file.open(results_filename.c_str());
+
+    while (getline(col_in, formula)) {
+        if (formula == "") break;
+        formula_result= check_property(formula, pa->aut);
+        out << formula_result;
+        results_file << formula_result  ;
+    }
+    results_file.close();
+
 }
 
 //*********************************
@@ -167,7 +203,7 @@ int main(int argc, char *argv[])
     switch(argc) {
         case 2 :
             if(std::string(argv[1])== "--stdin")
-                automatonfile=""; //empty implies: stdin must be read
+                automaton_filename=""; //empty implies: stdin must be read
             else{
                 std::cerr << "single option is not '--stdin'.\n";
                 print_usage(std::cerr);
@@ -176,7 +212,7 @@ int main(int argc, char *argv[])
             break;
         case 3 :
             if(std::string(argv[1])== "--a")
-                    automatonfile=argv[2];
+                    automaton_filename=argv[2];
             else{
                     std::cerr << "first option out of two is not '--a'.\n";
                     print_usage(std::cerr);
@@ -187,7 +223,13 @@ int main(int argc, char *argv[])
             if(std::string(argv[3]) == "--f")
                     formula=argv[4];
             else if (std::string(argv[3])== "--ff")
-                    formulafile=argv[4];
+                if (fs::exists(argv[4]))
+                    formulafilename=argv[4];
+                else {
+                    std::cerr << "formula file not found for option '--ff'.\n";
+                    print_usage(std::cerr);
+                    return 1;
+                }
                  else {
                 std::cerr << "second option  is not '--f or --ff'.\n";
                 print_usage(std::cerr);
@@ -202,50 +244,37 @@ int main(int argc, char *argv[])
 
     // do stuff;
     clock_start = std::chrono::system_clock::now();
+    resultfilename = "results.txt";
+    modelfilename="model.txt";
     std::cout << "Start of LTL model-check."<< '\n'<< '\n';
     setup_spot();
-    if (automatonfile==""){
-        std::cout<<"Supply the model, line by line and end with 'EOF_HOA' and supply formulas: \n";
-        std::remove("model.txt");
-        aut_file.open("model.txt");
-        while (   getline(std::cin , aut_line)) {
-
-            aut_file << aut_line << std::endl;
-            if (aut_line=="EOF_HOA") {
-                aut_file.close();
-                break;
-            }
-        }
-    automatonfile=  "model.txt";
+    if (automaton_filename==""){
+        copyAutomatonFile(std::cin,modelfilename);
+        automaton_filename=  modelfilename;
     }
-    int res  = load_automaton(automatonfile);
+    else if (automaton_filename!=modelfilename){// copy only if different from the default
+        std::ifstream infile;
+        infile.open(automaton_filename.c_str());
+        copyAutomatonFile(std::cin,modelfilename);
+    }
+    int res  = load_automaton(automaton_filename);
     spot::twa_graph_ptr& aut = pa->aut;
     std::cout << "Automaton properties:\n";
     custom_print(std::cout, aut,0);
     std:: string auttitle =getAutomatonTitle(pa->aut);
-    auto name = aut->get_named_prop<std::string>("automaton-name");
-    std::string automatontitle;
-       if (name!= nullptr){
-           automatontitle = *name;
-       }
-       else {
-           automatontitle="";}
-    std::cout << "Automaton '" <<automatontitle<<"' loaded === "<<log_elapsedtime()<<'\n';
-    std::remove("results.txt");
-    results_file.open("results.txt");
 
-   if (formula=="") {
-       std::cout << "Enter a formula to verify on automaton " << automatontitle << '\n';
-       while (getline(std::cin, formula)) {
-           if (formula == "") break;
-           result= check_property(formula, pa->aut);
-           std::cout << result;
-           results_file << result  ;
-       }
-       results_file.close();
-   }
-    else
-        std::cout<<check_property(formula,pa->aut);
+    std::cout << "Automaton '" <<auttitle<<"' loaded === "<<log_elapsedtime()<<'\n';
+    if (formulafilename!="") {
+        std::ifstream infile;
+        infile.open(formulafilename.c_str());
+        check_collection(infile, std::cout,resultfilename);
+        std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << '\n';
+    }
+    else if (formula!="")
+            std::cout<<check_property(formula,pa->aut);
+         else
+            check_collection(std::cin, std::cout,resultfilename);
+
     std::cout <<"End of LTL model-check. status: "<<res<<" === "<< log_elapsedtime()<< "\n";
     return 0;
 }
