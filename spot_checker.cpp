@@ -88,20 +88,14 @@ void copyAutomatonFile(std::istream& autin, std::string copyTofilename){
         }
     }
 }
-int  load_automaton(std::ostream& err , const std::string& hoafile)
+std::string  load_automaton( const std::string& hoafile)
 {
     pa = parse_aut(hoafile, bdd);
-    if (pa->format_errors(std::cerr)) {
-
-        err << "--syntax error while reading automaton input file-- \n";
-        return 1;
-    }
+    if (pa->format_errors(std::cerr))
+        return "--syntax error while reading automaton input file-- \n";
     if (pa->aborted) // following can only occur when reading  a HOA file.
-    {
-        err << "--error ABORT found in the HOA file -- \n";
-        return 1;
-    }
-    return 0; //custom_print(std::cout, pa->aut);
+        return"--error ABORT found in the HOA file -- \n";
+    return "";
 }
 
 std::string log_elapsedtime(){
@@ -125,23 +119,47 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     process_mem_usage(vm, rss);
-    sout << "=== start checking : '" << formula << "' on automaton '"<<getAutomatonTitle(aut) <<"' === "<<log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
-    spot::formula f = spot::parse_formula(formula);
-    spot::formula nf = spot::formula::Not(f);
-    spot::twa_graph_ptr af = spot::translator(bdd).run(nf);
-    //custom_print(std::cout, af,1);
-    spot::twa_run_ptr run;
-    run = aut->intersecting_run(af);
-    if (run) {
-        sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
+    sout << "=== start checking : '" << formula << "' on automaton '"<<getAutomatonTitle(aut) <<"' === "
+    <<log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
+    //spot::formula f = spot::parse_formula(formula);
+    spot::parsed_formula pf =spot::parse_infix_psl(formula);
+    spot::formula f=pf.f;
+    if (!pf.errors.empty()){
+        sout << "ERROR, syntax error while parsing formula.\n";
     }
     else {
-        af = spot::translator(bdd).run(f);
-        run = aut->intersecting_run(af);
-        sout << "PASS, with witness: \n" << *run;
+        //check if ap's are in the automaton.
+        spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
+        spot::twa_graph_ptr aftemp = spot::translator(fbdd).run(f);
+        std::vector<spot::formula> v = aut->ap();
+        bool apmismatch = false;
+        for (spot::formula ap: aftemp->ap())
+            if (std::find(v.begin(), v.end(), ap) != v.end()) {} //exists?
+            else {
+                apmismatch = true;
+                break;
+            }
+        if (apmismatch) {
+            sout << "ERROR, atomic propositions in formula are not in automaton.\n";
+        }
+        else {
+            spot::formula nf = spot::formula::Not(f);
+            spot::twa_graph_ptr af = spot::translator(bdd).run(nf);
+            custom_print(std::cout, af, 1);
+            spot::twa_run_ptr run;
+            run = aut->intersecting_run(af);
+            if (run) {
+                sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
+            } else {
+                af = spot::translator(bdd).run(f);
+                run = aut->intersecting_run(af);
+                sout << "PASS, with witness: \n" << *run;
+            }
+        }
     }
     process_mem_usage(vm, rss);
-    sout << "=== end checking : '" << formula <<  "' on automaton '"<<getAutomatonTitle(aut) <<"' === "<<log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
+    sout << "=== end checking : '" << formula <<  "' on automaton '"<<getAutomatonTitle(aut) <<"' === "
+    <<log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
     return sout.str();
 }
 
@@ -305,25 +323,29 @@ int main(int argc, char *argv[])
         infile.open(automaton_filename.c_str());
         copyAutomatonFile(infile,modelfilename);
     }
-    int res  = load_automaton(std::cerr, automaton_filename);
-    if (res!=0) return 1;
-    //custom_print(std::cout, pa->aut,0);
-    std:: string auttitle =getAutomatonTitle(pa->aut);
-    process_mem_usage(vm, rss);
-    std::cout << "Automaton '" <<auttitle<<"' loaded === "<< log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
-    if (formulafilename!="") {
-        std::ifstream infile;
-        infile.open(formulafilename.c_str());
-        check_collection(infile, std::cout,resultfilename);
-        std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
+    std::string res  = load_automaton(automaton_filename);
+    if (res=="") {
+        custom_print(std::cout, pa->aut, 0);
+        std::string auttitle = getAutomatonTitle(pa->aut);
+        process_mem_usage(vm, rss);
+        std::cout << "Automaton '" << auttitle << "' loaded === " << log_elapsedtime() << " [Memory: " << "VM: " << vm
+                  << "; RSS: " << rss << "]\n";
+        if (formulafilename != "") {
+            std::ifstream infile;
+            infile.open(formulafilename.c_str());
+            check_collection(infile, std::cout, resultfilename);
+            std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << " [Memory: "
+                      << "VM: " << vm << "; RSS: " << rss << "]\n";
+        } else if (formula != "") {
+            std::istringstream s_in;
+            s_in.str(formula);
+            check_collection(s_in, std::cout, resultfilename);
+        } else
+            check_collection(std::cin, std::cout, resultfilename);
     }
-    else if (formula!="") {
-        std::istringstream s_in;
-        s_in.str(formula);
-        check_collection(s_in, std::cout,resultfilename);
+    else{
+        std::cout<<res<<"\n";
     }
-    else
-        check_collection(std::cin, std::cout,resultfilename);
     process_mem_usage(vm, rss);
     std::cout <<"End of LTL model-check. === "<< log_elapsedtime()<< " [Memory: "<< "VM: " << vm << "; RSS: " << rss <<"]\n";
     return 0;
