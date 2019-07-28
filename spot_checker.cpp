@@ -12,6 +12,7 @@
 #include <ctime>
 #include <sstream>
 #include <fstream>
+
 #include<experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 #include <unistd.h>
@@ -28,6 +29,9 @@ const std::string modelfilename = "model.txt";
 std::chrono::system_clock::time_point clock_start, clock_end;
 std::string automaton_filename;
 std::string formulafilename;
+std::string outfilename;
+std::ofstream out_file;
+std::ostream *outstream;
 spot::parsed_aut_ptr pa;
 spot::bdd_dict_ptr bdd;
 
@@ -108,13 +112,14 @@ void print_help(std::ostream &out){
     out << "Usage of the program :  spot_checker --stdin --a <file> --f <formula> --ff <file> \n";
     out << "commandline options:\n";
     out << "--stdin   all input is  via standard input stream: first an automaton followed by formulas. \n";
-    out << "          all other arguments are ignored.";
+    out << "          all other arguments are ignored and output is via stdout.";
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--f       optional.  the LTL formula/property to check.  \n";
-    out << "--ff      optional.  filename containing multiple formulas/properties.) \n\n";
-    out << "without a cli formula, the user can supply via stdin a formula/property.) \n";
-    out << "the results are returned via stdout and the system will ask for a new formula.) \n";
-    out << "a blank line will stop the program.) \n";
+    out << "--ff      optional.  filename containing multiple formulas/properties. \n";
+    out << "--o       optional.  filename containing output.\n\n";
+    out << "Use-case when only option --a is supplied (without --f of --ff): \n";
+    out << "  The user can supply via stdin a formula/property. Results are returned via stdout.\n";
+    out << "  The system will ask for a new formula. A blank line will stop the program.) \n";
 }
 
 //void custom_print(std::ostream& out, spot::twa_graph_ptr& aut, int verbosity );   //declare before
@@ -266,55 +271,113 @@ int main(int argc, char *argv[])
 
     switch(argc) {
         case 2 :
-            if(std::string(argv[1])== "--stdin")
-                automaton_filename=""; //empty implies: stdin must be read
-            else{
+            if (std::string(argv[1]) == "--stdin")
+                automaton_filename = ""; //empty implies: stdin must be read
+            else {
                 std::cerr << "single option is not '--stdin'.\n";
                 print_help(std::cerr);
                 return 1;
             }
             break;
         case 3 :
-            if(std::string(argv[1])== "--a")
-                    automaton_filename=std::string(argv[2]);
-            else{
-                    std::cerr << "first option is not '--a'.\n";
-                print_help(std::cerr);
-                    return 1;
-            }
-            break;
-        case 5 :
-            if(std::string(argv[1])== "--a")
-                automaton_filename=std::string(argv[2]);
-            else{
+            if (std::string(argv[1]) == "--a")
+                automaton_filename = std::string(argv[2]);
+            else {
                 std::cerr << "first option is not '--a'.\n";
                 print_help(std::cerr);
                 return 1;
             }
-            if(std::string(argv[3]) == "--f")
-                    formula=std::string(argv[4]);
-            else if (std::string(argv[3])== "--ff")
+            break;
+        case 5 :
+            if (std::string(argv[1]) == "--a")
+                automaton_filename = std::string(argv[2]);
+            else {
+                std::cerr << "first option is not '--a'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            if (std::string(argv[3]) == "--f")
+                formula = std::string(argv[4]);
+            else if (std::string(argv[3]) == "--ff")
                 if (fs::exists(argv[4]))
-                    formulafilename=std::string(argv[4]);
+                    formulafilename = std::string(argv[4]);
                 else {
                     std::cerr << "formula file not found for option '--ff'.\n";
                     print_help(std::cerr);
                     return 1;
                 }
-                 else {
+            else {
                 std::cerr << "second option  is not '--f or --ff'.\n";
                 print_help(std::cerr);
                 return 1;
             }
             break;
+        case 7 :
+            if (std::string(argv[1]) == "--a")
+                automaton_filename = std::string(argv[2]);
+            else {
+                std::cerr << "first option is not '--a'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            if (std::string(argv[3]) == "--f")
+                formula = std::string(argv[4]);
+            else if (std::string(argv[3]) == "--ff")
+                if (fs::exists(argv[4]))
+                    formulafilename = std::string(argv[4]);
+                else {
+                    std::cerr << "formula file not found for option '--ff'.\n";
+                    print_help(std::cerr);
+                    return 1;
+                }
+            else {
+                std::cerr << "second option  is not '--f or --ff'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            if (std::string(argv[5]) == "--o")
+            {
+                outfilename = std::string(argv[6]);
+                std::remove(outfilename.c_str());
+                out_file.open(outfilename.c_str());
+                if (fs::exists(outfilename)) {
+                    { //see https://www.geeksforgeeks.org/io-redirection-c/
+                        // Backup streambuffers of  cout  css 20190728 not actually  needed.
+                        std::streambuf* stream_buffer_cout = std::cout.rdbuf();
+                        //std::streambuf* stream_buffer_cin = cin.rdbuf();
+                        // Get the streambuffer of the file
+                        std::streambuf* stream_buffer_file = out_file.rdbuf();
+                        // Redirect cout to file !!!
+                        std::cout.rdbuf(stream_buffer_file);
+                        // Redirect cout back to screen
+                        //std::cout.rdbuf(stream_buffer_cout);
+                    }
+
+                } else {
+                    std::cerr << "output file error'.\n";
+                    print_help(std::cerr);
+                    return 1;
+                }
+            }
+            else {
+                std::cerr << "third option  is not '--o'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            break;
+
+
+
+
+
         default :
             print_help(std::cerr);
             return 1;
     }
 
-
-
     setup_spot();
+
+
     if (automaton_filename==""){
         streamAutomatonToFile(std::cin, modelfilename);
         automaton_filename=  modelfilename;
