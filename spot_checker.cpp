@@ -114,11 +114,12 @@ void print_help(std::ostream &out){
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--f       optional.  the LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
-    out << "--ltlf    optional.  for finite LTL (if the automaton contains dead states): \n";
-    out << "          automatically add atomic proposition to label alive part of the formula. \n";
-    out << "          e.g. '--ltlf !dead or --ltlf alive' . note this AP MUST exist in the automaton as well!!\n";
+    out << "--ltlf    optional.  usefull for finite LTL (if the automaton contains dead states): \n";
+    out << "          merge an atomic proposition into the formula to label the 'alive' part. \n";
+    out << "          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!\n";
+    out << "          terminal states  shall have a self-loop with Ap='dead' or '!alive' or always transition to a state with such a self-loop\n";
     out << "--o       optional.  filename containing output.\n\n";
-    out << "Use-case when only option --a is supplied (without --f of --ff): \n";
+    out << "Use-case when only option --a is supplied (without --f or --ff): \n";
     out << "  The user can supply via stdin a formula/property. Results are returned via stdout.\n";
     out << "  The system will ask for a new formula. A blank line will stop the program.) \n";
 }
