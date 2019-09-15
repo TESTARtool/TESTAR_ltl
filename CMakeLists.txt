@@ -12,6 +12,8 @@ link_directories(/home/css/usr/lib)
 
 add_executable(spotparse spotparse.cpp)
 add_executable(spot_checker spot_checker.cpp)
+add_executable(spot_ltlf spot_ltlf.cpp)
 target_link_libraries(spot_checker libspot.so libbddx.so libstdc++fs.a) #libstdc++fs.a for filesystem exeprimental
 target_link_libraries(spotparse libspot.so)
+target_link_libraries(spot_ltlf libspot.so)
 

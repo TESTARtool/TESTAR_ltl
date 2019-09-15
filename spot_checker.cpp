@@ -17,18 +17,16 @@
 namespace fs = std::experimental::filesystem;
 #include <unistd.h>
 #include <iomanip>      // std::setprecision
-
-
-
-
+#include <spot/tl/ltlf.hh>
 
 
 // Globals
 const std::string resultfilename = "propertylog.txt";
-const std::string modelfilename = "model.txt";
+const std::string modelfilename = "model.txt";  // internal copy
 std::chrono::system_clock::time_point clock_start, clock_end;
 std::string automaton_filename;
 std::string formulafilename;
+std::string ltlf_alive_ap;
 std::string outfilename;
 std::ofstream out_file;
 std::ostream *outstream;
@@ -116,6 +114,9 @@ void print_help(std::ostream &out){
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--f       optional.  the LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
+    out << "--ltlf    optional.  for finite LTL (if the automaton contains dead states): \n";
+    out << "          automatically add atomic proposition to label alive part of the formula. \n";
+    out << "          e.g. '--ltlf !dead or --ltlf alive' . note this AP MUST exist in the automaton as well!!\n";
     out << "--o       optional.  filename containing output.\n\n";
     out << "Use-case when only option --a is supplied (without --f of --ff): \n";
     out << "  The user can supply via stdin a formula/property. Results are returned via stdout.\n";
@@ -196,13 +197,19 @@ std::string getAutomatonTitle(spot::twa_graph_ptr& aut){
 std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
+    spot::formula f;
+    if (ltlf_alive_ap.length() != 0) {
+        sout << "=== start ltlf ('alive' := "<<ltlf_alive_ap <<") checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
+        << log_elapsedtime() << log_mem_usage() << "\n";
+    } else
+        sout << "=== start checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
+        << log_elapsedtime() << log_mem_usage() << "\n";
+    spot::parsed_formula pf = spot::parse_infix_psl(formula);
+    if (ltlf_alive_ap.length() != 0) {
+        f = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
+    } else f = pf.f;
 
-    sout << "=== start checking : '" << formula << "' on automaton '"<<getAutomatonTitle(aut) <<"' === "
-    <<log_elapsedtime()<< log_mem_usage()<<"\n";
-    //spot::formula f = spot::parse_formula(formula);
-    spot::parsed_formula pf =spot::parse_infix_psl(formula);
-    spot::formula f=pf.f;
-    if (!pf.errors.empty()){
+    if (!pf.errors.empty()) {
         sout << "ERROR, syntax error while parsing formula.\n";
     }
     else {
@@ -312,6 +319,10 @@ int main(int argc, char *argv[])
                 return 1;
             }
             break;
+
+
+
+
         case 7 :
             if (std::string(argv[1]) == "--a")
                 automaton_filename = std::string(argv[2]);
@@ -335,9 +346,73 @@ int main(int argc, char *argv[])
                 print_help(std::cerr);
                 return 1;
             }
-            if (std::string(argv[5]) == "--o")
-            {
+            if (std::string(argv[5]) == "--ltlf")
+                ltlf_alive_ap = std::string(argv[6]);
+            else if (std::string(argv[5]) == "--o") {
                 outfilename = std::string(argv[6]);
+                std::remove(outfilename.c_str());
+                out_file.open(outfilename.c_str());
+                if (fs::exists(outfilename)) {
+                    { //see https://www.geeksforgeeks.org/io-redirection-c/
+                        // Backup streambuffers of  cout  css 20190728 not actually  needed.
+                        std::streambuf *stream_buffer_cout = std::cout.rdbuf();
+                        //std::streambuf* stream_buffer_cin = cin.rdbuf();
+                        // Get the streambuffer of the file
+                        std::streambuf *stream_buffer_file = out_file.rdbuf();
+                        // Redirect cout to file !!!
+                        std::cout.rdbuf(stream_buffer_file);
+                        // Redirect cout back to screen
+                        //std::cout.rdbuf(stream_buffer_cout);
+                    }
+
+                } else {
+                    std::cerr << "output file error'.\n";
+                    print_help(std::cerr);
+                    return 1;
+                }
+            } else {
+                std::cerr << "third option  is not '--ltlf' or '--o'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            break;
+
+//case9
+        case 9 :
+            if (std::string(argv[1]) == "--a")
+                automaton_filename = std::string(argv[2]);
+            else {
+                std::cerr << "first option is not '--a'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+            if (std::string(argv[3]) == "--f")
+                formula = std::string(argv[4]);
+            else if (std::string(argv[3]) == "--ff")
+                if (fs::exists(argv[4]))
+                    formulafilename = std::string(argv[4]);
+                else {
+                    std::cerr << "formula file not found for option '--ff'.\n";
+                    print_help(std::cerr);
+                    return 1;
+                }
+            else {
+                std::cerr << "second option  is not '--f or --ff'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+
+            if (std::string(argv[5]) == "--ltlf")
+                ltlf_alive_ap = std::string(argv[6]);
+            else {
+                std::cerr << "third option is not '--a'.\n";
+                print_help(std::cerr);
+                return 1;
+            }
+
+            if (std::string(argv[7]) == "--o")
+            {
+                outfilename = std::string(argv[8]);
                 std::remove(outfilename.c_str());
                 out_file.open(outfilename.c_str());
                 if (fs::exists(outfilename)) {
@@ -360,13 +435,12 @@ int main(int argc, char *argv[])
                 }
             }
             else {
-                std::cerr << "third option  is not '--o'.\n";
+                std::cerr << "fourth option  is not '--o'.\n";
                 print_help(std::cerr);
                 return 1;
             }
             break;
-
-
+//case9
 
 
 
