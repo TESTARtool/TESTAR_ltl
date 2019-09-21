@@ -107,18 +107,20 @@ std::string  loadAutomatonFromFile(const std::string &hoafile)
 
 
 void print_help(std::ostream &out){
-    out << "Usage of the program :  spot_checker --stdin --a <file> --f <formula> --ff <file> \n";
+    out << "\n";
+    out << "Usage:  spot_checker --stdin --a <file> --f <formula> --ff <file> --ltlf <ap> --o <file>\n";
     out << "commandline options:\n";
     out << "--stdin   all input is  via standard input stream: first an automaton followed by formulas. \n";
-    out << "          all other arguments are ignored and output is via stdout.";
+    out << "          all other arguments are ignored and output is via stdout.\n";
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--f       optional.  the LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
-    out << "--ltlf    optional.  usefull for finite LTL (if the automaton contains dead states): \n";
-    out << "          merge an atomic proposition into the formula to label the 'alive' part. \n";
+    out << "--ltlf    optional.  usable for finite LTL (if the automaton contains dead states): \n";
+    out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
     out << "          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!\n";
-    out << "          terminal states  shall have a self-loop with Ap='dead' or '!alive' or always transition to a state with such a self-loop\n";
-    out << "--o       optional.  filename containing output.\n\n";
+    out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
+    out << "          always transition to an artificial dead-state with such a self-loop\n";
+    out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
     out << "Use-case when only option --a is supplied (without --f or --ff): \n";
     out << "  The user can supply via stdin a formula/property. Results are returned via stdout.\n";
     out << "  The system will ask for a new formula. A blank line will stop the program.) \n";
@@ -244,8 +246,13 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
         }
     }
 
-    sout << "=== end checking : '" << formula <<  "' on automaton '"<<getAutomatonTitle(aut) <<"' === "
-    <<log_elapsedtime()<< log_mem_usage()<<"\n";
+    if (ltlf_alive_ap.length() != 0) {
+        sout << "=== end ltlf ('alive' := "<<ltlf_alive_ap <<") checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
+             << log_elapsedtime() << log_mem_usage() << "\n";
+    } else
+        sout << "=== end checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
+             << log_elapsedtime() << log_mem_usage() << "\n";
+
     return sout.str();
 }
 
@@ -275,7 +282,7 @@ int main(int argc, char *argv[])
     std:: string formula;
 
     clock_start = std::chrono::system_clock::now();
-    std::cout << "Start of LTL model-check. === "<<getCurrentLocalTime()<< log_mem_usage()<<"\n" ;
+    std::string startLog = "Start of LTL model-check. === "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
 
     switch(argc) {
         case 2 :
@@ -323,7 +330,7 @@ int main(int argc, char *argv[])
 
 
 
-
+//case7
         case 7 :
             if (std::string(argv[1]) == "--a")
                 automaton_filename = std::string(argv[2]);
@@ -377,7 +384,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
             break;
-
+//case7
 //case9
         case 9 :
             if (std::string(argv[1]) == "--a")
@@ -449,6 +456,7 @@ int main(int argc, char *argv[])
             print_help(std::cerr);
             return 1;
     }
+    std::cout << "Start of LTL model-check. === "<<getCurrentLocalTime()<< log_mem_usage()<<"\n" ;
 
     setup_spot();
 
