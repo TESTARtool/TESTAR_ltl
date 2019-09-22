@@ -201,12 +201,9 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     spot::formula f;
-    if (ltlf_alive_ap.length() != 0) {
-        sout << "=== start ltlf ('alive' := "<<ltlf_alive_ap <<") checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
-        << log_elapsedtime() << log_mem_usage() << "\n";
-    } else
-        sout << "=== start checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
-        << log_elapsedtime() << log_mem_usage() << "\n";
+    sout << "=== Formula Checking\n";
+    sout << "=== Start === " << log_elapsedtime() << log_mem_usage()<<"\n";
+    sout << "===\n";
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
     if (ltlf_alive_ap.length() != 0) {
         f = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
@@ -245,14 +242,8 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
             }
         }
     }
-
-    if (ltlf_alive_ap.length() != 0) {
-        sout << "=== end ltlf ('alive' := "<<ltlf_alive_ap <<") checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
-             << log_elapsedtime() << log_mem_usage() << "\n";
-    } else
-        sout << "=== end checking : '" << formula << "' on automaton '" << getAutomatonTitle(aut) << "' === "
-             << log_elapsedtime() << log_mem_usage() << "\n";
-
+    sout << "=== End === " << log_elapsedtime() << log_mem_usage()<<"\n";
+    sout << "=== Formula Checking\n";
     return sout.str();
 }
 
@@ -282,7 +273,7 @@ int main(int argc, char *argv[])
     std:: string formula;
 
     clock_start = std::chrono::system_clock::now();
-    std::string startLog = "Start of LTL model-check. === "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
+    std::string startLog = "=== LTL model-check Start === "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
 
     switch(argc) {
         case 2 :
@@ -456,8 +447,8 @@ int main(int argc, char *argv[])
             print_help(std::cerr);
             return 1;
     }
-    std::cout << "Start of LTL model-check. === "<<getCurrentLocalTime()<< log_mem_usage()<<"\n" ;
-
+    //std::cout << "=== LTL model-check Start === "<<getCurrentLocalTime()<< log_mem_usage()<<"\n" ;
+    std::cout << startLog;
     setup_spot();
 
 
@@ -471,19 +462,23 @@ int main(int argc, char *argv[])
         streamAutomatonToFile(infile, modelfilename);
     }
 
-    std::cout << "=== Automaton loading " << log_elapsedtime() << log_mem_usage()<<"\n";
+    std::cout << "=== Automaton Loading === " << log_elapsedtime() << log_mem_usage()<<"\n";
     std::string res  = loadAutomatonFromFile(automaton_filename);
     if (res=="") {
-
+        std::cout << "===\n";
         custom_print(std::cout, pa->aut, 0);
+        if (ltlf_alive_ap.length() != 0) {
+            std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";;
+        }
         std::string auttitle = getAutomatonTitle(pa->aut);
+        std::cout << "=== Automaton Loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
 
-        std::cout << "=== Automaton '" << auttitle << "' loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
+
         if (formulafilename != "") {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
             check_collection(f_in, std::cout, resultfilename);
-            std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
+           // std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
         } else if (formula != "") {
             std::istringstream s_in;
             s_in.str(formula);
@@ -495,6 +490,6 @@ int main(int argc, char *argv[])
         std::cout<<res<<"\n";
     }
 
-    std::cout <<"End of LTL model-check. === "<< log_elapsedtime()<< log_mem_usage()<<"\n";
+    std::cout <<"=== LTL model-check End === "<< log_elapsedtime()<< log_mem_usage()<<"\n";
     return 0;
 }
