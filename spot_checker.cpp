@@ -462,7 +462,9 @@ int main(int argc, char *argv[])
         streamAutomatonToFile(infile, modelfilename);
     }
 
-    std::cout << "=== Automaton Loading === " << log_elapsedtime() << log_mem_usage()<<"\n";
+    std::cout << "=== Automaton Loading\n";
+    std::cout << "=== Start === " << log_elapsedtime() << log_mem_usage()<<"\n";
+
     std::string res  = loadAutomatonFromFile(automaton_filename);
     if (res=="") {
         std::cout << "===\n";
@@ -471,7 +473,8 @@ int main(int argc, char *argv[])
             std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";;
         }
         std::string auttitle = getAutomatonTitle(pa->aut);
-        std::cout << "=== Automaton Loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
+        std::cout << "=== End === " << log_elapsedtime() << log_mem_usage()<<"\n";
+        std::cout << "=== Automaton Loading\n";
 
 
         if (formulafilename != "") {
