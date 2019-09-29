@@ -10,6 +10,7 @@ include_directories(/home/css/usr/include)   #for bddx.h file
 link_directories(/home/css/usr/lib)
 
 
+add_executable(JSONwriter JSONwritertest.cpp)
 add_executable(spotparse spotparse.cpp)
 add_executable(spot_checker spot_checker.cpp)
 add_executable(spot_ltlf spot_ltlf.cpp)

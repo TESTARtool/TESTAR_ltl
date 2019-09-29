@@ -18,6 +18,8 @@ namespace fs = std::experimental::filesystem;
 #include <unistd.h>
 #include <iomanip>      // std::setprecision
 #include <spot/tl/ltlf.hh>
+#include <nlohmann/json.hpp>
+
 
 
 // Globals
@@ -36,8 +38,13 @@ spot::bdd_dict_ptr bdd;
 
 void setup_spot(){
     bdd = spot::make_bdd_dict();
+
 }
 
+void testjson(){
+    nlohmann::json j;
+
+}
 
 std::string getCurrentLocalTime(){
     time_t curr_time;
@@ -49,12 +56,19 @@ std::string getCurrentLocalTime(){
     return date_timestring;
 
 }
+double getElapsedtime(){
+
+    clock_end = std::chrono::system_clock::now();
+    std::chrono::duration<float> elapsed_seconds = clock_end-clock_start;
+    return (elapsed_seconds.count()) ;
+}
 
 std::string log_elapsedtime(){
-    clock_end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = clock_end-clock_start;
-    return "< elapsed time: " + std::to_string(elapsed_seconds.count()) + "s >";
+    return "elapsed_seconds: " + std::to_string(getElapsedtime()) +";";
 }
+
+
+
 std::string log_mem_usage()
 // inspired by https://gist.github.com/thirdwing/da4621eb163a886a03c5
 {
@@ -74,8 +88,11 @@ std::string log_mem_usage()
     std::ostringstream ss;
     ss << std::fixed << std::setprecision(0) << (vsize / 1024.0);
     std::string vm_str = ss.str();
-    return " [Memory usage. VM: " + vm_str+"kb; RSS: " + std::to_string(rss * page_size_kb) +"kb]";
+    return " VM_mem_usage_kb: " + vm_str+"; RSS_mem_usage_kb: " + std::to_string(rss * page_size_kb);
 }
+
+
+
 
 
 
@@ -99,9 +116,9 @@ std::string  loadAutomatonFromFile(const std::string &hoafile)
     //loads only the first automaton in the file!
     pa = parse_aut(hoafile, bdd);
     if (pa->format_errors(std::cerr))
-        return "--ERROR loading automaton. Syntax error while reading automaton input file-- \n";
+        return "=== ERROR loading automaton. Syntax error while reading automaton input file";
     if (pa->aborted) // following can only occur when reading  a HOA file.
-        return"--ERROR loading automaton. 'ABORT' directive found in the HOA file -- \n";
+        return"=== ERROR loading automaton. 'ABORT' directive found in the HOA file";
     return "";
 }
 
@@ -201,9 +218,11 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     spot::formula f;
-    sout << "=== Formula Checking\n";
-    sout << "=== Start === " << log_elapsedtime() << log_mem_usage()<<"\n";
-    sout << "===\n";
+    sout << "=== Formula\n";
+    sout << "=== "+formula+"\n";
+
+    //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
+    sout << "=== ";
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
     if (ltlf_alive_ap.length() != 0) {
         f = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
@@ -242,8 +261,8 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
             }
         }
     }
-    sout << "=== End === " << log_elapsedtime() << log_mem_usage()<<"\n";
-    sout << "=== Formula Checking\n";
+    //sout << "=== End\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
+    //sout << "=== Formula\n";
     return sout.str();
 }
 
@@ -260,6 +279,7 @@ void check_collection(std::istream& col_in, std::ostream& out, std::string resul
         out << formula_result;
         results_file << formula_result  ;
     }
+    out << "=== Formula\n";  // add closing tag for formulas
     results_file.close();
 
 }
@@ -273,7 +293,7 @@ int main(int argc, char *argv[])
     std:: string formula;
 
     clock_start = std::chrono::system_clock::now();
-    std::string startLog = "=== LTL model-check Start === "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
+    std::string startLog = "=== LTL model-check Start\n=== "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
 
     switch(argc) {
         case 2 :
@@ -447,8 +467,7 @@ int main(int argc, char *argv[])
             print_help(std::cerr);
             return 1;
     }
-    //std::cout << "=== LTL model-check Start === "<<getCurrentLocalTime()<< log_mem_usage()<<"\n" ;
-    std::cout << startLog;
+     std::cout << startLog;
     setup_spot();
 
 
@@ -462,19 +481,19 @@ int main(int argc, char *argv[])
         streamAutomatonToFile(infile, modelfilename);
     }
 
-    std::cout << "=== Automaton Loading\n";
-    std::cout << "=== Start === " << log_elapsedtime() << log_mem_usage()<<"\n";
+    std::cout << "=== Automaton\n";
+    std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
 
     std::string res  = loadAutomatonFromFile(automaton_filename);
     if (res=="") {
-        std::cout << "===\n";
+        std::cout << "=== ";
         custom_print(std::cout, pa->aut, 0);
         if (ltlf_alive_ap.length() != 0) {
             std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";;
         }
         std::string auttitle = getAutomatonTitle(pa->aut);
-        std::cout << "=== End === " << log_elapsedtime() << log_mem_usage()<<"\n";
-        std::cout << "=== Automaton Loading\n";
+        std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
+        std::cout << "=== Automaton\n";
 
 
         if (formulafilename != "") {
@@ -491,8 +510,10 @@ int main(int argc, char *argv[])
     }
     else{
         std::cout<<res<<"\n";
+        std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
+        std::cout << "=== Automaton\n";
     }
 
-    std::cout <<"=== LTL model-check End === "<< log_elapsedtime()<< log_mem_usage()<<"\n";
+    std::cout <<"=== LTL model-check End\n=== "<< log_elapsedtime()<< log_mem_usage()<<"\n";
     return 0;
 }
