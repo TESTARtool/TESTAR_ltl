@@ -1,4 +1,13 @@
 (Ga | Fb) M 1
 F!(!b <-> FGb)
 X(!a W Xb)
-
+a U b
+a W b
+a R b
+a M b
+F a
+G a
+Xa
+F( a | Xb)
+F( a & Xb)
+Xa | XFa

@@ -23,15 +23,10 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
+const std::string version = "20191208";
 const std::string resultfilename = "propertylog.txt";
 const std::string modelfilename = "model.txt";  // internal copy
 std::chrono::system_clock::time_point clock_start, clock_end;
-std::string automaton_filename;
-std::string formulafilename;
-std::string ltlf_alive_ap;
-std::string outfilename;
-std::ofstream out_file;
-std::ostream *outstream;
 spot::parsed_aut_ptr pa;
 spot::bdd_dict_ptr bdd;
 
@@ -125,8 +120,9 @@ std::string  loadAutomatonFromFile(const std::string &hoafile)
 
 void print_help(std::ostream &out){
     out << "\n";
+    out << "Program version : "<<version<<"\n";
     out << "Usage:  spot_checker --stdin --a <file> --f <formula> --ff <file> --ltlf <ap> --o <file>\n";
-    out << "commandline options:\n";
+    out << "Commandline options:\n";
     out << "--stdin   all input is  via standard input stream: first an automaton followed by formulas. \n";
     out << "          all other arguments are ignored and output is via stdout.\n";
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
@@ -149,7 +145,7 @@ void custom_print(std::ostream& out, spot::twa_graph_ptr& aut, int verbosity = 0
 {
     // We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr& dict = aut->get_dict();
-    std::cout << "Automaton properties:\n";
+    std::cout << "Properties of Automaton:\n";
     // Some meta-data...
     out << "Acceptance: " << aut->get_acceptance() << '\n';
     out << "Number of sets: " << aut->num_sets() << '\n';
@@ -214,19 +210,35 @@ std::string getAutomatonTitle(spot::twa_graph_ptr& aut){
         return "";
     }
 }
-std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
+
+
+std::string check_property( std::string formula,std::int8_t  tracetodead, std::string ltlf_alive_ap , spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
-    spot::formula f;
     sout << "=== Formula\n";
-    sout << "=== "+formula+"\n";
-
-    //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
-    sout << "=== ";
+    sout << "=== "+formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
     if (ltlf_alive_ap.length() != 0) {
-        f = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
-    } else f = pf.f;
+        spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
+        std::string ltlf_string= str_psl(finitef);
+        if (tracetodead) {
+            pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLF tracevariant: " + ltlf_string + "]";
+        }
+        else{
+            std::string lastUntil = " U ";
+            std::string weakUntil = " W ";
+            std::size_t found = ltlf_string.rfind(lastUntil);
+            if (found != std::string::npos) {
+                ltlf_string.replace(found, lastUntil.length(), weakUntil);
+                pf = spot::parse_infix_psl(ltlf_string);
+                sout << "    [LTLF modelvariant: " + ltlf_string + "]";
+            }
+        }
+    }
+    sout <<"\n";
+    spot::formula f = pf.f;
+
 
     if (!pf.errors.empty()) {
         sout << "ERROR, syntax error while parsing formula.\n";
@@ -265,17 +277,33 @@ std::string check_property( std::string formula, spot::twa_graph_ptr& aut) {
     //sout << "=== Formula\n";
     return sout.str();
 }
+std::int8_t issingletracetodead( std::string ltlf_alive_ap, spot::twa_graph_ptr& aut) {
+    if (ltlf_alive_ap.length() != 0) {
+        std::string tracetodead= "!"+ltlf_alive_ap +" U G("+ltlf_alive_ap+")"; //!dead U G(dead): dead is required
+        std::string  formula_result= check_property(tracetodead, false,ltlf_alive_ap,pa->aut);
+        std::size_t found = formula_result.rfind("PASS");
+        if (found!=std::string::npos){
+            return true;
+        }else
+            return false;
+    }
+    else
+        return false;
 
-void check_collection(std::istream& col_in, std::ostream& out, std::string results_filename){
+}
+
+void check_collection(std::istream& col_in, std::string ltlf_alive_ap,std::ostream& out, std::string results_filename){
 
     std::ofstream results_file;
     std::string formula_result;
     std::string f;
     if (fs::exists(results_filename.c_str()))     std::remove(results_filename.c_str());
     results_file.open(results_filename.c_str());
+    std::int8_t tracetodead=issingletracetodead(ltlf_alive_ap,pa->aut);
     while (getline(col_in, f)) {
         if (f == "") break;
-        formula_result= check_property(f, pa->aut);
+
+        formula_result= check_property(f,tracetodead,ltlf_alive_ap,pa->aut);
         out << formula_result;
         results_file << formula_result  ;
     }
@@ -290,10 +318,15 @@ int main(int argc, char *argv[])
 
 {
     // do stuff;
+    std::string automaton_filename;
+    std::string formulafilename;
+    std::string outfilename;
+    std::ofstream out_file;
     std:: string formula;
+    std::string ltlf_alive_ap;
 
     clock_start = std::chrono::system_clock::now();
-    std::string startLog = "=== LTL model-check Start\n=== "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
+    std::string startLog = "=== LTL model-check Start Program version : "+version+"\n=== "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
 
     switch(argc) {
         case 2 :
@@ -489,7 +522,9 @@ int main(int argc, char *argv[])
         std::cout << "=== ";
         custom_print(std::cout, pa->aut, 0);
         if (ltlf_alive_ap.length() != 0) {
-            std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";;
+            std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";
+            std::cout << "If the automaton is just a single trace, then extension '!dead U G(dead)' is applied \n";
+            std::cout << "If the automaton contains one or more loops, then extension '!dead W G(dead)' is applied \n";
         }
         std::string auttitle = getAutomatonTitle(pa->aut);
         std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
@@ -499,14 +534,14 @@ int main(int argc, char *argv[])
         if (formulafilename != "") {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
-            check_collection(f_in, std::cout, resultfilename);
+            check_collection(f_in, ltlf_alive_ap,std::cout, resultfilename);
            // std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
         } else if (formula != "") {
             std::istringstream s_in;
             s_in.str(formula);
-            check_collection(s_in, std::cout, resultfilename);
+            check_collection(s_in, ltlf_alive_ap,std::cout, resultfilename);
         } else
-            check_collection(std::cin, std::cout, resultfilename);
+            check_collection(std::cin, ltlf_alive_ap,std::cout, resultfilename);
     }
     else{
         std::cout<<res<<"\n";
