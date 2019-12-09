@@ -279,7 +279,7 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
 }
 std::int8_t issingletracetodead( std::string ltlf_alive_ap, spot::twa_graph_ptr& aut) {
     if (ltlf_alive_ap.length() != 0) {
-        std::string tracetodead= "!"+ltlf_alive_ap +" U G("+ltlf_alive_ap+")"; //!dead U G(dead): dead is required
+        std::string tracetodead= ltlf_alive_ap +" U G(!"+ltlf_alive_ap+")"; //alive U G(!alive): dead is required
         std::string  formula_result= check_property(tracetodead, false,ltlf_alive_ap,pa->aut);
         std::size_t found = formula_result.rfind("PASS");
         if (found!=std::string::npos){

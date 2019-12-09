@@ -14,6 +14,7 @@ F( a & Xb)
 Xa | XFa
 G(a->Fb)
 !dead & G(dead | (a -> F(b & !dead))) & (!dead W Gdead)
+!dead & G(dead | (a -> F((dead)|(b & !dead)))) & (!dead W Gdead)
 !dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead W Gdead)
 !dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead U Gdead)
 !dead & G(dead | (a -> F((dead)))) & (!dead U Gdead)
