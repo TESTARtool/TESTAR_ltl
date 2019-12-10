@@ -1,5 +1,5 @@
 a U b
-a W b
+a  Wb
 a R b
 a M b
 Fa
@@ -12,8 +12,9 @@ F(b)
 GF(b)
 F( a & Xb)
 Xa | XFa
-G(a->Fb)
+G(a->F b)
 !dead & G(dead | (a -> F(b & !dead))) & (!dead W Gdead)
 !dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead W Gdead)
 !dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead U Gdead)
 !dead & G(dead | (a -> F((dead)))) & (!dead U Gdead)
+G(a U b)

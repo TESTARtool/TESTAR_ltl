@@ -40,6 +40,21 @@ void testjson(){
     nlohmann::json j;
 
 }
+//https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
+void findAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr)
+{
+    // Get the first occurrence
+    size_t pos = data.find(toSearch);
+
+    // Repeat till end is reached
+    while( pos != std::string::npos)
+    {
+        // Replace this occurrence of Sub String
+        data.replace(pos, toSearch.size(), replaceStr);
+        // Get the next occurrence from the current position
+        pos =data.find(toSearch, pos + replaceStr.size());
+    }
+}
 
 std::string getCurrentLocalTime(){
     time_t curr_time;
@@ -229,10 +244,18 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil);
-            if (found != std::string::npos) {
+            if (found != std::string::npos) { //equality should not occur
                 ltlf_string.replace(found, lastUntil.length(), weakUntil);
+                // check liveness in scc's, but allow dangling requests in final trace
+                findAndReplaceAll(ltlf_string,"F(","F((!"+ltlf_alive_ap+")|"); //F(...) => F((!!dead)|(..)
+                findAndReplaceAll(ltlf_string,"X(","X((!"+ltlf_alive_ap+")|");
+                findAndReplaceAll(ltlf_string,"U (","U ((!"+ltlf_alive_ap+")|");
+                findAndReplaceAll(ltlf_string,") M","|(!"+ltlf_alive_ap+")) M");
+
+
                 pf = spot::parse_infix_psl(ltlf_string);
                 sout << "    [LTLF modelvariant: " + ltlf_string + "]";
+
             }
         }
     }
