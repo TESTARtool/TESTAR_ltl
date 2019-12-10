@@ -545,9 +545,10 @@ int main(int argc, char *argv[])
         std::cout << "=== ";
         custom_print(std::cout, pa->aut, 0);
         if (ltlf_alive_ap.length() != 0) {
-            std::cout << "Finite LTL checking with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";
-            std::cout << "If the automaton is just a single trace, then extension '!dead U G(dead)' is applied \n";
-            std::cout << "If the automaton contains one or more loops, then extension '!dead W G(dead)' is applied \n";
+            std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap<<"\"\n";
+            std::cout << "If the automaton:\n";
+            std::cout << "1. is a single trace, then standard as in  De Giacomo & Vardi is applied. \n";
+            std::cout << "2. contains loops, then besides (1.) '!dead W G(dead)' is appended and additionally :'(dead) | ' is weaved in any F,X,U and M \n";
         }
         std::string auttitle = getAutomatonTitle(pa->aut);
         std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
