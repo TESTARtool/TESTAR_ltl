@@ -264,7 +264,6 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
         //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
         trans.set_level(spot::postprocessor::Low);
         spot::twa_graph_ptr aftemp = trans.run(f);
-        std::cout << "Number of states in formula: " << aftemp->num_states() << '\n';
         std::vector<spot::formula> v = aut->ap();
         bool apmismatch = false;
         for (spot::formula ap: aftemp->ap())
@@ -283,7 +282,6 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
             spot::translator ntrans = spot::translator(bdd);
             ntrans.set_level(spot::postprocessor::Low);
             spot::twa_graph_ptr af = ntrans.run(nf);
-            std::cout << "Number of states in negated formula: " << af->num_states() << '\n';
             spot::twa_run_ptr run;
             run = aut->intersecting_run(af);
             if (run) {
