@@ -22,7 +22,3 @@ State: 5
 [!0&!1&!2&!3&4] 5 {0}
 --END--
 EOF_HOA
-a->Fb
-c->Fb
-b->Fb
-~a U c

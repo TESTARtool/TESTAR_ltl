@@ -23,23 +23,10 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20191208";
-const std::string resultfilename = "propertylog.txt";
-const std::string modelfilename = "model.txt";  // internal copy
+const std::string version = "20191215";
 std::chrono::system_clock::time_point clock_start, clock_end;
-spot::parsed_aut_ptr pa;
-spot::bdd_dict_ptr bdd;
 
 
-void setup_spot(){
-    bdd = spot::make_bdd_dict();
-
-}
-
-void testjson(){
-    nlohmann::json j;
-
-}
 //https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
 void findAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr)
 {
@@ -110,7 +97,9 @@ void streamAutomatonToFile(std::istream &autin, std::string copyTofilename){
     //the parser can only load from file , not from a stream.
     std::ofstream aut_file;
     std::string aut_line;
-    std::remove(copyTofilename.c_str());
+    char * filenamearray = new char [copyTofilename.length()+1];
+    strcpy (filenamearray, copyTofilename.c_str());
+    std::remove(filenamearray);
     aut_file.open(copyTofilename.c_str());
     while (  getline(autin , aut_line)) {
         aut_file << aut_line << std::endl;
@@ -121,13 +110,13 @@ void streamAutomatonToFile(std::istream &autin, std::string copyTofilename){
     }
 }
 
-std::string  loadAutomatonFromFile(const std::string &hoafile)
+std::string  loadAutomatonFromFile(spot::bdd_dict_ptr &bdd,spot::parsed_aut_ptr &pa_ptr, const std::string &hoafile)
 {
     //loads only the first automaton in the file!
-    pa = parse_aut(hoafile, bdd);
-    if (pa->format_errors(std::cerr))
+    pa_ptr = parse_aut(hoafile, bdd);
+    if (pa_ptr->format_errors(std::cerr))
         return "=== ERROR loading automaton. Syntax error while reading automaton input file";
-    if (pa->aborted) // following can only occur when reading  a HOA file.
+    if (pa_ptr->aborted) // following can only occur when reading  a HOA file.
         return"=== ERROR loading automaton. 'ABORT' directive found in the HOA file";
     return "";
 }
@@ -138,7 +127,8 @@ void print_help(std::ostream &out){
     out << "Program version : "<<version<<"\n";
     out << "Usage:  spot_checker --stdin --a <file> --f <formula> --ff <file> --ltlf <ap> --o <file>\n";
     out << "Commandline options:\n";
-    out << "--stdin   all input is  via standard input stream: first an automaton followed by formulas. \n";
+    out << "--stdin   all input is  via standard input stream: first an automaton (HOA format) followed by formulas. \n";
+    out << "          'EOF_HOA' + <enter>  mark the end of the automaton.\n";
     out << "          all other arguments are ignored and output is via stdout.\n";
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--f       optional.  the LTL formula/property to check.  \n";
@@ -149,9 +139,13 @@ void print_help(std::ostream &out){
     out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
     out << "          always transition to an artificial dead-state with such a self-loop\n";
     out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
+    out << "\n";
     out << "Use-case when only option --a is supplied (without --f or --ff): \n";
-    out << "  The user can supply via stdin a formula/property. Results are returned via stdout.\n";
-    out << "  The system will ask for a new formula. A blank line will stop the program.) \n";
+    out << "          The user can supply via stdin a formula/property. Results are returned via stdout.\n";
+    out << "          The system will ask for a new formula. A blank line will stop the program. \n";
+    out << "\n";
+    out << "Note:     large automatons (states,ap's), large formula (size, ap's) \n";
+    out << "          can make the program unresponsive or even time-out due to lack of memory. \n";
 }
 
 //void custom_print(std::ostream& out, spot::twa_graph_ptr& aut, int verbosity );   //declare before
@@ -227,7 +221,7 @@ std::string getAutomatonTitle(spot::twa_graph_ptr& aut){
 }
 
 
-std::string check_property( std::string formula,std::int8_t  tracetodead, std::string ltlf_alive_ap , spot::twa_graph_ptr& aut) {
+std::string check_property( std::string formula,std::int8_t  tracetodead, std::string ltlf_alive_ap ,spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr& aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -251,8 +245,6 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
                 findAndReplaceAll(ltlf_string,"X(","X((!"+ltlf_alive_ap+")|");
                 findAndReplaceAll(ltlf_string,"U (","U ((!"+ltlf_alive_ap+")|");
                 findAndReplaceAll(ltlf_string,") M","|(!"+ltlf_alive_ap+")) M");
-
-
                 pf = spot::parse_infix_psl(ltlf_string);
                 sout << "    [LTLF modelvariant: " + ltlf_string + "]";
 
@@ -262,14 +254,17 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
     sout <<"\n";
     spot::formula f = pf.f;
 
-
     if (!pf.errors.empty()) {
         sout << "ERROR, syntax error while parsing formula.\n";
     }
     else {
         //check if ap's are in the automaton.
         spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
-        spot::twa_graph_ptr aftemp = spot::translator(fbdd).run(f);
+        spot::translator trans = spot::translator(fbdd);
+        //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
+        trans.set_level(spot::postprocessor::Low);
+        spot::twa_graph_ptr aftemp = trans.run(f);
+        std::cout << "Number of states in formula: " << aftemp->num_states() << '\n';
         std::vector<spot::formula> v = aut->ap();
         bool apmismatch = false;
         for (spot::formula ap: aftemp->ap())
@@ -281,10 +276,14 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
         if (apmismatch) {
             sout << "ERROR, atomic propositions in formula are not in automaton.\n";
         }
+
         else {
+
             spot::formula nf = spot::formula::Not(f);
-            spot::twa_graph_ptr af = spot::translator(bdd).run(nf);
-            //custom_print(std::cout, af, 1);
+            spot::translator ntrans = spot::translator(bdd);
+            ntrans.set_level(spot::postprocessor::Low);
+            spot::twa_graph_ptr af = ntrans.run(nf);
+            std::cout << "Number of states in negated formula: " << af->num_states() << '\n';
             spot::twa_run_ptr run;
             run = aut->intersecting_run(af);
             if (run) {
@@ -300,10 +299,10 @@ std::string check_property( std::string formula,std::int8_t  tracetodead, std::s
     //sout << "=== Formula\n";
     return sout.str();
 }
-std::int8_t issingletracetodead( std::string ltlf_alive_ap, spot::twa_graph_ptr& aut) {
+std::int8_t issingletracetodead( std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr& aut) {
     if (ltlf_alive_ap.length() != 0) {
         std::string tracetodead= ltlf_alive_ap +" U G(!"+ltlf_alive_ap+")"; //alive U G(!alive): dead is required
-        std::string  formula_result= check_property(tracetodead, false,ltlf_alive_ap,pa->aut);
+        std::string  formula_result= check_property(tracetodead, false,ltlf_alive_ap,bdd,aut);
         std::size_t found = formula_result.rfind("PASS");
         if (found!=std::string::npos){
             return true;
@@ -315,24 +314,18 @@ std::int8_t issingletracetodead( std::string ltlf_alive_ap, spot::twa_graph_ptr&
 
 }
 
-void check_collection(std::istream& col_in, std::string ltlf_alive_ap,std::ostream& out, std::string results_filename){
+void check_collection(std::istream& col_in, spot::bdd_dict_ptr &bdd,spot::parsed_aut_ptr &pa_ptr, std::string ltlf_alive_ap,std::ostream& out){
 
-    std::ofstream results_file;
+
     std::string formula_result;
     std::string f;
-    if (fs::exists(results_filename.c_str()))     std::remove(results_filename.c_str());
-    results_file.open(results_filename.c_str());
-    std::int8_t tracetodead=issingletracetodead(ltlf_alive_ap,pa->aut);
+    std::int8_t tracetodead=issingletracetodead(ltlf_alive_ap,bdd,pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f == "") break;
-
-        formula_result= check_property(f,tracetodead,ltlf_alive_ap,pa->aut);
+        formula_result= check_property(f,tracetodead,ltlf_alive_ap,bdd,pa_ptr->aut);
         out << formula_result;
-        results_file << formula_result  ;
     }
     out << "=== Formula\n";  // add closing tag for formulas
-    results_file.close();
-
 }
 
 
@@ -347,8 +340,16 @@ int main(int argc, char *argv[])
     std::ofstream out_file;
     std:: string formula;
     std::string ltlf_alive_ap;
+    spot::parsed_aut_ptr pa;
+    spot::bdd_dict_ptr bdd;
+
+    std::string timecopy = getCurrentLocalTime();
+    findAndReplaceAll(timecopy," ","_");
+    findAndReplaceAll(timecopy,":","_");
+    std::string copyofmodel= "temp_model"+timecopy+".txt";// copy in case the input is from stdin
 
     clock_start = std::chrono::system_clock::now();
+    bdd = spot::make_bdd_dict(); //setup_spot
     std::string startLog = "=== LTL model-check Start Program version : "+version+"\n=== "+  getCurrentLocalTime()+ log_mem_usage()+"\n" ;
 
     switch(argc) {
@@ -425,12 +426,14 @@ int main(int argc, char *argv[])
                 ltlf_alive_ap = std::string(argv[6]);
             else if (std::string(argv[5]) == "--o") {
                 outfilename = std::string(argv[6]);
-                std::remove(outfilename.c_str());
+                char * filenamearray = new char [outfilename.length()+1];
+                strcpy (filenamearray, outfilename.c_str());
+                std::remove(filenamearray); // remove old file wit same name
                 out_file.open(outfilename.c_str());
                 if (fs::exists(outfilename)) {
                     { //see https://www.geeksforgeeks.org/io-redirection-c/
-                        // Backup streambuffers of  cout  css 20190728 not actually  needed.
-                        std::streambuf *stream_buffer_cout = std::cout.rdbuf();
+                        // Backup streambuffers of  cout : css 20190728 not actually  needed.
+                        //std::streambuf *stream_buffer_cout = std::cout.rdbuf();
                         //std::streambuf* stream_buffer_cin = cin.rdbuf();
                         // Get the streambuffer of the file
                         std::streambuf *stream_buffer_file = out_file.rdbuf();
@@ -488,7 +491,10 @@ int main(int argc, char *argv[])
             if (std::string(argv[7]) == "--o")
             {
                 outfilename = std::string(argv[8]);
-                std::remove(outfilename.c_str());
+                char * filenamearray = new char [outfilename.length()+1];
+                strcpy (filenamearray, outfilename.c_str());
+                std::remove(filenamearray); // remove old file wit same name
+
                 out_file.open(outfilename.c_str());
                 if (fs::exists(outfilename)) {
                     { //see https://www.geeksforgeeks.org/io-redirection-c/
@@ -517,30 +523,26 @@ int main(int argc, char *argv[])
             break;
 //case9
 
-
-
         default :
             print_help(std::cerr);
             return 1;
     }
      std::cout << startLog;
-    setup_spot();
 
 
     if (automaton_filename==""){
-        streamAutomatonToFile(std::cin, modelfilename);
-        automaton_filename=  modelfilename;
+        streamAutomatonToFile(std::cin, copyofmodel);
     }
-    else if (automaton_filename!=modelfilename){// copy only if different from the default
+    else {// seems overhead to make a copy, skipping this results in a exit code 139
         std::ifstream infile;
         infile.open(automaton_filename.c_str());
-        streamAutomatonToFile(infile, modelfilename);
+        streamAutomatonToFile(infile, copyofmodel);
     }
+    automaton_filename=  copyofmodel;
 
     std::cout << "=== Automaton\n";
     std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
-
-    std::string res  = loadAutomatonFromFile(automaton_filename);
+    std::string res  = loadAutomatonFromFile(bdd,pa,automaton_filename);
     if (res=="") {
         std::cout << "=== ";
         custom_print(std::cout, pa->aut, 0);
@@ -558,20 +560,26 @@ int main(int argc, char *argv[])
         if (formulafilename != "") {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
-            check_collection(f_in, ltlf_alive_ap,std::cout, resultfilename);
+            check_collection(f_in, bdd,pa,ltlf_alive_ap,std::cout );
            // std::cout << "Formula file  '" << formulafilename << "' loaded === " << log_elapsedtime() << log_mem_usage()<<"\n";
         } else if (formula != "") {
             std::istringstream s_in;
             s_in.str(formula);
-            check_collection(s_in, ltlf_alive_ap,std::cout, resultfilename);
+            check_collection(s_in,bdd, pa,ltlf_alive_ap,std::cout);
         } else
-            check_collection(std::cin, ltlf_alive_ap,std::cout, resultfilename);
+            check_collection(std::cin,bdd, pa,ltlf_alive_ap,std::cout);
     }
     else{
         std::cout<<res<<"\n";
         std::cout << "=== " << log_elapsedtime() << log_mem_usage()<<"\n";
         std::cout << "=== Automaton\n";
     }
+    if (automaton_filename==copyofmodel){ //input was via stdin, so removing the output file
+        char * filenamearray = new char [copyofmodel.length()+1];
+        strcpy (filenamearray, copyofmodel.c_str());
+        std::remove(filenamearray);
+    }
+
 
     std::cout <<"=== LTL model-check End\n=== "<< log_elapsedtime()<< log_mem_usage()<<"\n";
     return 0;
