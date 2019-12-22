@@ -23,7 +23,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20191215";
+const std::string version = "20191222";
 std::chrono::system_clock::time_point clock_start, clock_end;
 
 
@@ -69,28 +69,30 @@ std::string log_elapsedtime(){
 std::string log_mem_usage()
 // inspired by https://gist.github.com/thirdwing/da4621eb163a886a03c5
 {
-
-    // the two fields we want
-    unsigned long vsize;
-    long rss;
-    {
-        std::string ignore;
-        std::ifstream ifs("/proc/self/stat", std::ios_base::in);
-        ifs >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-            >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-            >> ignore >> ignore >> vsize >> rss;
-    }
-
+    long mem_size;
+    long mem_rss;
+    long mem_shared;
+    long mem_text;
+    long mem_lib;  //always 0
+    long mem_data;
+    long mem_dt; // always 0
     long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
-    std::ostringstream ss;
-    ss << std::fixed << std::setprecision(0) << (vsize / 1024.0);
-    std::string vm_str = ss.str();
-    return " VM_mem_usage_kb: " + vm_str+"; RSS_mem_usage_kb: " + std::to_string(rss * page_size_kb);
+
+    { // see http://man7.org/linux/man-pages/man5/proc.5.html
+        std::string ignore;
+        std::ifstream ifs("/proc/self/statm", std::ios_base::in);
+        ifs >> mem_size >> mem_rss >> mem_shared >> mem_text >> mem_lib >> mem_data >> mem_dt;
+    }
+    return
+            " VMemory (kb):"
+           " Size: " + std::to_string(static_cast<int>(mem_size)*page_size_kb)+
+           "; RSS: " + std::to_string(static_cast<int>(mem_rss)*page_size_kb)+
+            "; Shared: " + std::to_string(static_cast<int>(mem_shared)*page_size_kb)+
+            "; Exe: " + std::to_string(static_cast<int>(mem_text)*page_size_kb)+
+            //"; Lib: " + std::to_string(static_cast<int>(mem_lib)*page_size_kb)+
+            "; Data: " + std::to_string(static_cast<int>(mem_data)*page_size_kb)+
+            "\n";
 }
-
-
-
-
 
 
 void streamAutomatonToFile(std::istream &autin, std::string copyTofilename){
