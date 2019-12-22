@@ -90,8 +90,7 @@ std::string log_mem_usage()
             "; Shared: " + std::to_string(static_cast<int>(mem_shared)*page_size_kb)+
             "; Exe: " + std::to_string(static_cast<int>(mem_text)*page_size_kb)+
             //"; Lib: " + std::to_string(static_cast<int>(mem_lib)*page_size_kb)+
-            "; Data: " + std::to_string(static_cast<int>(mem_data)*page_size_kb)+
-            "\n";
+            "; Data: " + std::to_string(static_cast<int>(mem_data)*page_size_kb);
 }
 
 
