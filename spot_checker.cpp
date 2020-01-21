@@ -246,7 +246,7 @@ check_property(std::string formula, std::int8_t tracetodead, std::string ltlf_al
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
-    sout << "=== " + formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
+    sout << "=== " + formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n"
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
     if (ltlf_alive_ap.length() != 0) {
         spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
@@ -273,7 +273,7 @@ check_property(std::string formula, std::int8_t tracetodead, std::string ltlf_al
     }
     sout << "\n";
     spot::formula f = pf.f;
-
+    sout << "=== ";
     if (!pf.errors.empty()) {
         sout << "ERROR, syntax error while parsing formula.\n";
     } else {
@@ -452,30 +452,33 @@ int main(int argc, char *argv[]) {
     std::cout << "=== Automaton\n";
     std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
     std::string res = loadAutomatonFromFile(bdd, pa, automaton_filename);
-    if (res == "") {
+    if (res.empty()) {
         std::cout << "=== ";
+        std::int8_t dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
         custom_print(std::cout, pa->aut, 0);
         if (ltlf_alive_ap.length() != 0) {
             std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap << "\"\n";
-            std::cout << "The logic as in  De Giacomo & Vardi 2013,2014 is applied to use an automaton for LTLf checking.\n";
-            std::cout << "If the automaton also contains loops, then also the following is applied: \n";
-            std::cout << "  the last U, which was induced by G&V-2013 is replaced by W \n";
-            std::cout << "  and :'((dead) | ' is weaved/appended for any F,X,U \n";
-            std::cout << "  and :' | (dead))' is weaved/prepended for any  M \n";
-            std::cout << "  R and W operators do not require any modification \n";
-            std::cout << "  example: G(p0 -> F(p1) first becomes (G&V-2013) !dead & G(p0->F(p1 & !dead) & !dead U G(dead)\n";
-            std::cout << "  and finally transformed to !dead & G(p0->F((!!dead) | p1 & !dead) & !dead W G(dead)\n";
+            std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
+            std::cout << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
+            std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
+            std::cout << "     b. and :'((dead) | ' is weaved/appended for any F,X,U \n";
+            std::cout << "     c. and :' | (dead))' is weaved/prepended for any  M \n";
+            std::cout << "     d. R and W operators do not require any modification \n";
+            std::cout << "     Example:\n";
+            std::cout << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
+            std::cout << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | p1 & !dead))) & (!dead W G(dead))\n";
+            std::cout << "  (This automaton has "<<(dag ? "no" : "")<<"loops)\n";
         }
         std::string auttitle = getAutomatonTitle(pa->aut);
         std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
         std::cout << "=== Automaton\n";
 
 
-        if (formulafilename != "") {
+        if (!formulafilename.empty()) {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
             check_collection(f_in, bdd, pa, ltlf_alive_ap,not ltl2f.empty(), std::cout);
-        } else if (formula != "") {
+        } else if (!formula.empty()) {
             std::istringstream s_in;
             s_in.str(formula);
             check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),std::cout);
@@ -487,9 +490,9 @@ int main(int argc, char *argv[]) {
         std::cout << "=== Automaton\n";
     }
     if (automaton_filename == copyofmodel) { //input was via stdin, so removing the output file
-        char *filenamearray = new char[copyofmodel.length() + 1];
-        strcpy(filenamearray, copyofmodel.c_str());
-        std::remove(filenamearray);
+        char *fnamearray = new char[copyofmodel.length() + 1];
+        strcpy(fnamearray, copyofmodel.c_str());
+        std::remove(fnamearray);
     }
 
     std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
