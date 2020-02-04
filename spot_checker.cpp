@@ -25,40 +25,39 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200202";
+const std::string version = "20200203";
 std::chrono::system_clock::time_point clock_start, clock_end;
 
 //https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
 
 int findClosingParenthesis(std::string &data, int openPos) {
-    char text[data.size()+1];
-    data.copy(text,data.size()+1);
-    text[data.size()+1]='\0';
+    char text[data.size() + 1];
+    data.copy(text, data.size() + 1);
+    text[data.size() + 1] = '\0';
     int closePos = openPos;
     int counter = 1;
     while (counter > 0) {
         char c = text[++closePos];
         if (c == '(') {
             counter++;
-        }
-        else if (c == ')') {
+        } else if (c == ')') {
             counter--;
         }
     }
     return closePos;
 }
+
 int findOpeningParenthesis(std::string &data, int closePos) {
-    char text[data.size()+1];
-    data.copy(text,data.size()+1);
-    text[data.size()+1]='\0';
-    int  openPos=closePos;
+    char text[data.size() + 1];
+    data.copy(text, data.size() + 1);
+    text[data.size() + 1] = '\0';
+    int openPos = closePos;
     int counter = 1;
     while (counter > 0) {
         char c = text[--openPos];
         if (c == '(') {
             counter--;
-        }
-        else if (c == ')') {
+        } else if (c == ')') {
             counter++;
         }
     }
@@ -78,7 +77,8 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
         pos = data.find(toSearch, pos + replaceStr.size());
     }
 }
-void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr,std::string closing) {
+
+void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
 
@@ -86,14 +86,15 @@ void findForwardAndInsertAll(std::string &data, std::string toSearch, std::strin
     while (pos != std::string::npos) {
         // Replace this occurrence of Sub String
         //find matching bracket
-        int bracketpos = findClosingParenthesis(data,pos+toSearch.size()-1); //assume last char is the "("
-        std::string orginalblock = data.substr(pos+toSearch.size()-1,bracketpos-pos-1);
-        data.replace(pos, toSearch.size()+orginalblock.size()-1, toSearch+replaceStr+orginalblock+closing);
+        int bracketpos = findClosingParenthesis(data, pos + toSearch.size() - 1); //assume last char is the "("
+        std::string orginalblock = data.substr(pos + toSearch.size() - 1, bracketpos - pos - 1);
+        data.replace(pos, toSearch.size() + orginalblock.size() - 1, toSearch + replaceStr + orginalblock + closing);
         // Get the next occurrence from the current position
-        pos = data.find(toSearch, pos + toSearch.size()+replaceStr.size()+orginalblock.size()+closing.size());
+        pos = data.find(toSearch, pos + toSearch.size() + replaceStr.size() + orginalblock.size() + closing.size());
     }
 }
-void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr,std::string opening) {
+
+void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string opening) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
 
@@ -101,14 +102,15 @@ void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::stri
     while (pos != std::string::npos) {
         // Replace this occurrence of Sub String
         //find matching bracket
-        int bracketpos = findOpeningParenthesis(data,pos-toSearch.size()+1); //assume first char is the "("
-        std::string orginalblock = data.substr(bracketpos+0,pos-bracketpos+1);
-        data.replace(bracketpos,toSearch.size()+orginalblock.size()-1,opening+orginalblock+replaceStr+toSearch);
+        int bracketpos = findOpeningParenthesis(data, pos - toSearch.size() + 1); //assume first char is the "("
+        std::string orginalblock = data.substr(bracketpos + 0, pos - bracketpos + 1);
+        data.replace(bracketpos, toSearch.size() + orginalblock.size() - 1,
+                     opening + orginalblock + replaceStr + toSearch);
         // Get the next occurrence from the current position
-        pos = data.find(toSearch, bracketpos +opening.size()+orginalblock.size()+replaceStr.size()+ toSearch.size());
+        pos = data.find(toSearch,
+                        bracketpos + opening.size() + orginalblock.size() + replaceStr.size() + toSearch.size());
     }
 }
-
 
 
 std::string getCurrentLocalTime() {
@@ -167,12 +169,16 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
     std::string cmd;
     for (int i = 0; i < argc; ++i) {
         std::string arg = argv[i];
-        if (0 == arg.find(option)) {
+        if (0 == arg.find(option)) { //match from start
             if (novalue) { //option without a value
-                std::size_t found = arg.find_last_of(option);
-                cmd = arg.substr(found + 1);
+                int a=arg.size();
+                size_t b = option.size();
+                size_t c=1;
+                cmd = arg.substr(b,c);//, a-b);
+                //'+' in stead of ','  and the one-off costed me an evening: segmentation fault
                 return cmd;
-            } else if (i < argc - 1) {//take the next argument as value
+            } else
+                if (i < (argc - 1)) {//take the next argument as value
                 cmd = argv[i + 1];
                 return cmd;
             }
@@ -221,6 +227,8 @@ void print_help(std::ostream &out) {
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--sf      optional.  the single LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
+    out << "--fonly   optional.  verifies the syntax of the given formulas. ignores options a,ltlf,ltl2f,witness\n";
+    out << "          uses '!dead' as ltlf value to verify the LTLF variants.\n";
     out << "--ltlf    optional.  usable for finite LTL (if the automaton contains dead states): \n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
     out << "          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!\n";
@@ -309,7 +317,8 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
 
 
 std::string
-check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd,
+check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
+               spot::bdd_dict_ptr &bdd,
                spot::twa_graph_ptr &aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
@@ -319,31 +328,23 @@ check_property(std::string formula, bool tracetodead, bool witness, std::string 
     if (ltlf_alive_ap.length() != 0) {
         spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
         std::string ltlf_string = str_psl(finitef);
-        if (tracetodead) {
+        if (tracetodead ) {
             pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF tracevariant: " + ltlf_string + "]";
-        } else {
+            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+        }
+        else {
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil);
             if (found != std::string::npos) { //equality should not occur
                 ltlf_string.replace(found, lastUntil.length(), weakUntil);
-
-
-//                std::size_t found = ltlf_string.find("F(:");
-//                if (found!=std::string::npos)
                 // check liveness in scc's, but allow dangling requests in final trace
-                findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|",")");
-                findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|",")");
-                findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|",")");
-                findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")","(");
-
-//                findAndReplaceAll(ltlf_string, "F(", "F((!" + ltlf_alive_ap + ")|"); //F(...) => F((!!dead)|(..)
-//                findAndReplaceAll(ltlf_string, "X(", "X((!" + ltlf_alive_ap + ")|");
-//                findAndReplaceAll(ltlf_string, "U (", "U ((!" + ltlf_alive_ap + ")|");
-//                findAndReplaceAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")) M");
+                findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
+                findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
+                findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
+                findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
                 pf = spot::parse_infix_psl(ltlf_string);
-                sout << "    [LTLF modelvariant: " + ltlf_string + "]";
+                sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
 
             }
         }
@@ -351,57 +352,100 @@ check_property(std::string formula, bool tracetodead, bool witness, std::string 
     sout << "\n";
     spot::formula f = pf.f;
     sout << "=== ";
-    if (!pf.errors.empty()) {
-        sout << "ERROR, syntax error while parsing formula.\n";
+    bool syntaxOK = pf.errors.empty();
+    if (!syntaxOK) {
+        sout << "ERROR, syntax error while parsing last formula.\n";
     } else {
-        //check if ap's are in the automaton.
-        spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
-        spot::translator trans = spot::translator(fbdd);
-        //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
-        trans.set_level(spot::postprocessor::Low);
-        spot::twa_graph_ptr aftemp = trans.run(f);
-        std::vector<spot::formula> v = aut->ap();
-        bool apmismatch = false;
-        for (spot::formula ap: aftemp->ap())
-            if (std::find(v.begin(), v.end(), ap) != v.end()) {} //exists?
-            else {
-                apmismatch = true;
-                break;
-            }
-        if (apmismatch) {
-            sout << "ERROR, atomic propositions in formula are not in automaton.\n";
-        } else {
-
-            spot::formula nf = spot::formula::Not(f);
-            spot::translator ntrans = spot::translator(bdd);
-            ntrans.set_level(spot::postprocessor::Low);
-
-            spot::twa_graph_ptr af = ntrans.run(nf);
-            bool nonempty;
-            spot::twa_run_ptr run;
-            if (!witness) {
-                nonempty = aut->intersects(af);
-                if (nonempty) {
-                    sout << "FAIL, no counterexample requested.\n";
-                } else {
-                    sout << "PASS, no witness requested.\n";
+            //do the real modelcheck
+            //check if ap's are in the automaton.
+            spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
+            spot::translator trans = spot::translator(fbdd);
+            //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
+            trans.set_level(spot::postprocessor::Low);
+            spot::twa_graph_ptr aftemp = trans.run(f);
+            std::vector<spot::formula> v = aut->ap();
+            bool apmismatch = false;
+            for (spot::formula ap: aftemp->ap())
+                if (std::find(v.begin(), v.end(), ap) != v.end()) {} //exists?
+                else {
+                    apmismatch = true;
+                    break;
                 }
+            if (apmismatch) {
+                sout << "ERROR, atomic propositions in formula are not in automaton.\n";
             } else {
-                run = aut->intersecting_run(af);
-                if (run) {
-                    sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
+
+                spot::formula nf = spot::formula::Not(f);
+                spot::translator ntrans = spot::translator(bdd);
+                ntrans.set_level(spot::postprocessor::Low);
+
+                spot::twa_graph_ptr af = ntrans.run(nf);
+                bool nonempty;
+                spot::twa_run_ptr run;
+                if (!witness) {
+                    nonempty = aut->intersects(af);
+                    if (nonempty) {
+                        sout << "FAIL, no counterexample requested.\n";
+                    } else {
+                        sout << "PASS, no witness requested.\n";
+                    }
                 } else {
-                    af = spot::translator(bdd).run(f);
                     run = aut->intersecting_run(af);
-                    sout << "PASS, with witness: \n" << *run;
+                    if (run) {
+                        sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
+                    } else {
+                        af = spot::translator(bdd).run(f);
+                        run = aut->intersecting_run(af);
+                        sout << "PASS, with witness: \n" << *run;
+                    }
                 }
             }
-        }
     }
     //sout << "=== End\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
     //sout << "=== Formula\n";
     return sout.str();
 }
+
+std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap) {
+    //return "do nothing";
+
+    std::ostringstream sout;  //needed for capturing output of run.
+    sout << "=== Formula\n";
+    sout << "=== " + formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n"
+    spot::parsed_formula pf = spot::parse_infix_psl(formula);
+    if (ltlf_alive_ap.length() != 0) {
+        spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
+        std::string ltlf_string = str_psl(finitef);
+            pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+            std::string lastUntil = " U ";
+            std::string weakUntil = " W ";
+            std::size_t found = ltlf_string.rfind(lastUntil);
+            if (found != std::string::npos) { //equality should not occur
+                ltlf_string.replace(found, lastUntil.length(), weakUntil);
+                // used to check liveness in scc's, but allow dangling requests in final trace
+                findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
+                findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
+                findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
+                findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
+                pf = spot::parse_infix_psl(ltlf_string);
+                sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
+
+            }
+
+    }
+    sout << "\n";
+    spot::formula f = pf.f;
+    sout << "=== ";
+    bool syntaxOK = pf.errors.empty();
+    if (!syntaxOK) {
+        sout << "ERROR, syntax error while parsing last formula.\n";
+    } else {
+        sout << "Syntax is valid for last formula.\n";
+        }
+    return sout.str();
+}
+
 
 std::int8_t model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
@@ -409,10 +453,7 @@ std::int8_t model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd
         std::string tracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
         std::string formula_result = check_property(tracetodead, false, false, ltlf_alive_ap, bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
-        if (found != std::string::npos) {
-            return true;
-        } else
-            return false;
+        return  (found != std::string::npos) ;
     } else
         return false;
 
@@ -424,11 +465,12 @@ check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut
 
     std::string formula_result;
     std::string f;
-   bool tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
+    bool tracetodead = false;
+        tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f == "") break;
-        if (originalandltlf) {
-            formula_result = check_property(f, tracetodead, witness, "", bdd, pa_ptr->aut);
+        if (originalandltlf ) {
+            formula_result = check_property(f, tracetodead,  witness, "", bdd, pa_ptr->aut);
             out << formula_result;
         }
         formula_result = check_property(f, tracetodead, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
@@ -436,6 +478,21 @@ check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut
 
     }
     out << "=== Formula\n";  // add closing tag for formulas
+}
+
+void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
+
+
+        std::string formula_result;
+        std::string f;
+        while (getline(col_in, f)) {
+            if (f == "") break;
+            formula_result = check_formulaproperty(f, ltlf_alive_ap);
+            out << formula_result;
+        }
+
+        out << "=== Formula\n";  // add closing tag for formulas
+
 }
 
 
@@ -448,6 +505,7 @@ int main(int argc, char *argv[]) {
     std::string formula;
     std::string ltlf_alive_ap;
     bool dowitness;
+    bool onlyformulasyntax;
     spot::parsed_aut_ptr pa;
     spot::bdd_dict_ptr bdd;
 
@@ -467,23 +525,29 @@ int main(int argc, char *argv[]) {
     std::string formulafile = getCmdOption(argc, argv, "--ff");
     std::string ltlf = getCmdOption(argc, argv, "--ltlf");
     std::string ltl2f = getCmdOption(argc, argv, "--ltl2f");
-    std::string witness = getCmdOption(argc, argv, "--witnes");
+    std::string witness = getCmdOption(argc, argv, "--witness" );
+    std::string checkonlyformulas = getCmdOption(argc, argv, "--fonly" );
+    std::string outfile = "" ; //getCmdOption(argc, argv, "--o");
 
-    std::string outfile = getCmdOption(argc, argv, "--o");
 
-    if (stdinput == "n") {
-        automaton_filename = ""; //empty implies: stdin must be read
-    } else if (automaton.empty()) {
-        std::cerr << "no automaton supplied via '--a'.\n";
-        print_help(std::cerr);
-        return 1;
-    } else if (not fs::exists(automaton)) {
-        std::cerr << "automaton file not found for option '--a'.\n";
-        print_help(std::cerr);
-        return 1;
-    } else
-        automaton_filename = automaton;
 
+    onlyformulasyntax = (checkonlyformulas == "y");
+
+
+    if ( not onlyformulasyntax) {
+        if (stdinput == "n") {
+            automaton_filename = ""; //empty implies: stdin must be read
+        } else if (automaton.empty()) {
+            std::cerr << "no automaton supplied via '--a'.\n";
+            print_help(std::cerr);
+            return 1;
+        } else if (not fs::exists(automaton)) {
+            std::cerr << "automaton file not found for option '--a'.\n";
+            print_help(std::cerr);
+            return 1;
+        } else
+            automaton_filename = automaton;
+    }
 
     if (singleformula.empty()) {
         if (formulafile.empty()) {
@@ -498,19 +562,23 @@ int main(int argc, char *argv[]) {
             formulafilename = formulafile;
     } else
         formula = singleformula;
-    if (not ltl2f.empty()) {
-        ltlf_alive_ap = ltl2f;
-    } else if (not ltlf.empty()) {
-        ltlf_alive_ap = ltlf;
+
+    dowitness = (witness == "y");
+
+    if (onlyformulasyntax) {
+        ltlf_alive_ap = "!dead";
+    } else {
+        if (not ltl2f.empty()) {
+            ltlf_alive_ap = ltl2f;
+        } else if (not ltlf.empty()) {
+            ltlf_alive_ap = ltlf;
+        }
     }
-    if (witness == "s") {
-        dowitness = true;
-    } else
-        dowitness = false;
 
 
 
 
+if (outfile !="") {
     //inspired by https://www.geeksforgeeks.org/io-redirection-c/
     char *filenamearray = new char[outfile.length() + 1];
     strcpy(filenamearray, outfile.c_str());
@@ -525,75 +593,106 @@ int main(int argc, char *argv[]) {
         }
 
     } else {
+
         std::cerr << "output file error'.\n";
         print_help(std::cerr);
         return 1;
     }
+}
     // commandline sanitation done
+
+
 
 
     std::cout << startLog;
 
+    if (not onlyformulasyntax) {
 
-    if (automaton_filename.empty()) {
-        streamAutomatonToFile(std::cin, copyofmodel);
-    } else {// seems overhead to make a copy, but skipping this will end up in an exit code 139
-        std::ifstream infile;
-        infile.open(automaton_filename.c_str());
-        streamAutomatonToFile(infile, copyofmodel);
-    }
-    automaton_filename = copyofmodel;
 
-    std::cout << "=== Automaton\n";
-    std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
-    std::string res = loadAutomatonFromFile(bdd, pa, automaton_filename);
-    if (res.empty()) {
-        std::cout << "=== ";
-        std::int8_t dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
-        custom_print(std::cout, pa->aut, 0);
-        if (ltlf_alive_ap.length() != 0) {
-            std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap << "\"\n";
-            std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
-            std::cout
-                    << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
-            std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
-            std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
-            std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
-            std::cout << "     d. R and W operators do not require any modification \n";
-            std::cout << "     Example:\n";
-            std::cout
-                    << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
-            std::cout
-                    << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead))) & (!dead W G(dead))\n";
-            std::cout << "     This adaption ensures liveness checks in SCC's while allowing a dangling request  in the final trace to 'dead'\n";
-            std::cout << "  (This automaton has " << (dag ? "no" : "") << "loops)\n";
+        if (automaton_filename.empty()) {
+            streamAutomatonToFile(std::cin, copyofmodel);
+        } else {// seems overhead to make a copy, but skipping this will end up in an exit code 139
+            std::ifstream infile;
+            infile.open(automaton_filename.c_str());
+            streamAutomatonToFile(infile, copyofmodel);
         }
-        std::string auttitle = getAutomatonTitle(pa->aut);
-        std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
-        std::cout << "=== Automaton\n";
+        automaton_filename = copyofmodel;
 
+        std::cout << "=== Automaton\n";
+        std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
+        std::string res = loadAutomatonFromFile(bdd, pa, automaton_filename);
+        if (res.empty()) {
+            std::cout << "=== ";
+            std::int8_t dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
+            custom_print(std::cout, pa->aut, 0);
+            if (ltlf_alive_ap.length() != 0) {
+                std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap
+                          << "\"\n";
+                std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
+                std::cout
+                        << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
+                std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
+                std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
+                std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
+                std::cout << "     d. R and W operators do not require any modification \n";
+                std::cout << "     Example:\n";
+                std::cout
+                        << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
+                std::cout
+                        << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead))) & (!dead W G(dead))\n";
+                std::cout
+                        << "     This adaption ensures liveness checks in SCC's while allowing a dangling request  in the final trace to 'dead'\n";
+                std::cout << "  (This automaton has " << (dag ? "no" : "") << "loops)\n";
+            }
+            std::string auttitle = getAutomatonTitle(pa->aut);
+            std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
+            std::cout << "=== Automaton\n";
+
+
+            if (!formulafilename.empty()) {
+                std::ifstream f_in;
+                f_in.open(formulafilename.c_str());
+                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
+                                 std::cout);
+            } else if (!formula.empty()) {
+                std::istringstream s_in;
+                s_in.str(formula);
+                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),  dowitness,
+                                 std::cout);
+            } else
+                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),  dowitness,
+                                 std::cout);
+        } else {
+            std::cout << res << "\n";
+            std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
+            std::cout << "=== Automaton\n";
+        }
+        if (automaton_filename == copyofmodel) { //input was via stdin, so removing the output file
+            char *fnamearray = new char[copyofmodel.length() + 1];
+            strcpy(fnamearray, copyofmodel.c_str());
+            std::remove(fnamearray);
+        }
+    }
+
+    else {//some codeclone
 
         if (!formulafilename.empty()) {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
-            check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),dowitness, std::cout);
-        } else if (!formula.empty()) {
+            check_formulacollection(f_in, ltlf_alive_ap, std::cout);
+        }
+        else
+            if (!formula.empty()) {
             std::istringstream s_in;
             s_in.str(formula);
-            check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),dowitness, std::cout);
-        } else
-            check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),dowitness, std::cout);
-    } else {
-        std::cout << res << "\n";
-        std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
-        std::cout << "=== Automaton\n";
-    }
-    if (automaton_filename == copyofmodel) { //input was via stdin, so removing the output file
-        char *fnamearray = new char[copyofmodel.length() + 1];
-        strcpy(fnamearray, copyofmodel.c_str());
-        std::remove(fnamearray);
+            check_formulacollection(s_in, ltlf_alive_ap, std::cout);
+        }
+            else
+            check_formulacollection(std::cin, ltlf_alive_ap, std::cout);
+
+
     }
 
-    std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
+  std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
     return 0;
 }
