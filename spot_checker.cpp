@@ -25,7 +25,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200203";
+const std::string version = "20200204";
 std::chrono::system_clock::time_point clock_start, clock_end;
 
 //https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
@@ -77,7 +77,7 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
         pos = data.find(toSearch, pos + replaceStr.size());
     }
 }
-
+//custom for TESTAR
 void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
@@ -175,7 +175,7 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
                 size_t b = option.size();
                 size_t c=1;
                 cmd = arg.substr(b,c);//, a-b);
-                //'+' in stead of ','  and the one-off costed me an evening: segmentation fault
+                //'+' in stead of ','  and the one-off costed me an evening
                 return cmd;
             } else
                 if (i < (argc - 1)) {//take the next argument as value
@@ -219,7 +219,7 @@ std::string loadAutomatonFromFile(spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr 
 void print_help(std::ostream &out) {
     out << "\n";
     out << "Program version : " << version << "\n";
-    out << "Usage:  spot_checker --stdin --a <file> --sf <formula> --ff <file> --ltlf <ap> --o <file>\n";
+    out << "Usage:  spot_checker --stdin --a <file> --sf <formula> --ff <file> --fonly --ltlf <ap> --ltl2f <ap>\n";
     out << "Commandline options:\n";
     out << "--stdin   all input is  via standard input stream: first an automaton (HOA format) followed by formulas.\n";
     out << "          'EOF_HOA' + <enter>  mark the end of the automaton.\n";
@@ -236,7 +236,7 @@ void print_help(std::ostream &out) {
     out << "          always transition to a(n artificial) dead-state with such a self-loop\n";
     out << "--ltl2f   optional.  same as --ltlf but checks both the original formula and the ltlf variant\n";
     out << "--witness optional.  generates a trace: counterexample( for FAIL)or witness (for PASS)\n";
-    out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
+    //out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
     out << "\n";
     out << "Use-case when only option --a is supplied (without --sf or --ff): \n";
     out << "          The user can supply via stdin a formula/property. Results are returned via stdout.\n";
@@ -316,8 +316,7 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
 }
 
 
-std::string
-check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
+std::string check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
                spot::bdd_dict_ptr &bdd,
                spot::twa_graph_ptr &aut) {
 
@@ -401,13 +400,10 @@ check_property(std::string formula, bool tracetodead, bool witness, std::string 
                 }
             }
     }
-    //sout << "=== End\n=== " << log_elapsedtime() << log_mem_usage()<<"\n";
-    //sout << "=== Formula\n";
     return sout.str();
 }
 
 std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap) {
-    //return "do nothing";
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -459,10 +455,8 @@ std::int8_t model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd
 
 }
 
-void
-check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr, std::string ltlf_alive_ap,
-                 bool originalandltlf, bool witness, std::ostream &out) {
-
+void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
+    std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
     std::string f;
     bool tracetodead = false;
@@ -481,8 +475,6 @@ check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut
 }
 
 void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
-
-
         std::string formula_result;
         std::string f;
         while (getline(col_in, f)) {
@@ -490,9 +482,7 @@ void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, st
             formula_result = check_formulaproperty(f, ltlf_alive_ap);
             out << formula_result;
         }
-
         out << "=== Formula\n";  // add closing tag for formulas
-
 }
 
 
@@ -525,15 +515,11 @@ int main(int argc, char *argv[]) {
     std::string formulafile = getCmdOption(argc, argv, "--ff");
     std::string ltlf = getCmdOption(argc, argv, "--ltlf");
     std::string ltl2f = getCmdOption(argc, argv, "--ltl2f");
-    std::string witness = getCmdOption(argc, argv, "--witness" );
-    std::string checkonlyformulas = getCmdOption(argc, argv, "--fonly" );
-    std::string outfile = "" ; //getCmdOption(argc, argv, "--o");
-
-
+    std::string witness = getCmdOption(argc, argv, "--witnes",true );//deliberate missing last char
+    std::string checkonlyformulas = getCmdOption(argc, argv, "--fonl", true );
+    //std::string outfile = "" ; //getCmdOption(argc, argv, "--o");
 
     onlyformulasyntax = (checkonlyformulas == "y");
-
-
     if ( not onlyformulasyntax) {
         if (stdinput == "n") {
             automaton_filename = ""; //empty implies: stdin must be read
@@ -563,7 +549,7 @@ int main(int argc, char *argv[]) {
     } else
         formula = singleformula;
 
-    dowitness = (witness == "y");
+    dowitness = (witness == "s");
 
     if (onlyformulasyntax) {
         ltlf_alive_ap = "!dead";
@@ -574,41 +560,11 @@ int main(int argc, char *argv[]) {
             ltlf_alive_ap = ltlf;
         }
     }
-
-
-
-
-if (outfile !="") {
-    //inspired by https://www.geeksforgeeks.org/io-redirection-c/
-    char *filenamearray = new char[outfile.length() + 1];
-    strcpy(filenamearray, outfile.c_str());
-    std::remove(filenamearray); // remove old file with same name
-    out_file.open(outfile.c_str());
-    if (fs::exists(outfile)) {
-        {
-            // Get the streambuffer of the file
-            std::streambuf *stream_buffer_file = out_file.rdbuf();
-            // Redirect cout to file !!!
-            std::cout.rdbuf(stream_buffer_file);
-        }
-
-    } else {
-
-        std::cerr << "output file error'.\n";
-        print_help(std::cerr);
-        return 1;
-    }
-}
     // commandline sanitation done
-
-
-
 
     std::cout << startLog;
 
     if (not onlyformulasyntax) {
-
-
         if (automaton_filename.empty()) {
             streamAutomatonToFile(std::cin, copyofmodel);
         } else {// seems overhead to make a copy, but skipping this will end up in an exit code 139
@@ -673,8 +629,7 @@ if (outfile !="") {
             std::remove(fnamearray);
         }
     }
-
-    else {//some codeclone
+    else {
 
         if (!formulafilename.empty()) {
             std::ifstream f_in;
@@ -689,10 +644,7 @@ if (outfile !="") {
         }
             else
             check_formulacollection(std::cin, ltlf_alive_ap, std::cout);
-
-
     }
-
   std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
     return 0;
 }
