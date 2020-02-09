@@ -25,7 +25,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200204";
+const std::string version = "20200209";
 std::chrono::system_clock::time_point clock_start, clock_end;
 
 //https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
@@ -77,6 +77,7 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
         pos = data.find(toSearch, pos + replaceStr.size());
     }
 }
+
 //custom for TESTAR
 void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
     // Get the first occurrence
@@ -171,14 +172,13 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
         std::string arg = argv[i];
         if (0 == arg.find(option)) { //match from start
             if (novalue) { //option without a value
-                int a=arg.size();
+                int a = arg.size();
                 size_t b = option.size();
-                size_t c=1;
-                cmd = arg.substr(b,c);//, a-b);
+                size_t c = 1;
+                cmd = arg.substr(b, c);//, a-b);
                 //'+' in stead of ','  and the one-off costed me an evening
                 return cmd;
-            } else
-                if (i < (argc - 1)) {//take the next argument as value
+            } else if (i < (argc - 1)) {//take the next argument as value
                 cmd = argv[i + 1];
                 return cmd;
             }
@@ -227,8 +227,9 @@ void print_help(std::ostream &out) {
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--sf      optional.  the single LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
-    out << "--fonly   optional.  verifies the syntax of the given formulas. ignores options a,ltlf,ltl2f,witness\n";
-    out << "          uses '!dead' as ltlf value to verify the LTLF variants.\n";
+    out
+            << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variant. ignores options --a,--witness\n";
+    out << "          uses '!dead' as ltlf value in case there is no --ltl(2)f option supplied.\n";
     out << "--ltlf    optional.  usable for finite LTL (if the automaton contains dead states): \n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
     out << "          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!\n";
@@ -247,7 +248,7 @@ void print_help(std::ostream &out) {
 }
 
 
-void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0) {
+void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
     // from SPOT website. We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr &dict = aut->get_dict();
     std::cout << "Properties of Automaton:\n";
@@ -304,6 +305,25 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
             }
         }
     }
+    if (ltlf_alive_ap.length() != 0) {
+        std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap
+                  << "\"\n";
+        std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
+        std::cout
+                << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
+        std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
+        std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
+        std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
+        std::cout << "     d. R and W operators do not require any modification \n";
+        std::cout << "     Example:\n";
+        std::cout
+                << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
+        std::cout
+                << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead))) & (!dead W G(dead))\n";
+        std::cout
+                << "     This adaption ensures liveness checks in SCC's while allowing a dangling request  in the final trace to 'dead'\n";
+        std::cout << "  (This automaton has " << (dag ? "no" : "") << "loops)\n";
+    }
 }
 
 std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
@@ -317,8 +337,8 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
 
 
 std::string check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
-               spot::bdd_dict_ptr &bdd,
-               spot::twa_graph_ptr &aut) {
+                           spot::bdd_dict_ptr &bdd,
+                           spot::twa_graph_ptr &aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -327,11 +347,10 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
     if (ltlf_alive_ap.length() != 0) {
         spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
         std::string ltlf_string = str_psl(finitef);
-        if (tracetodead ) {
+        if (tracetodead) {
             pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
-        }
-        else {
+        } else {
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil);
@@ -355,50 +374,50 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
     if (!syntaxOK) {
         sout << "ERROR, syntax error while parsing last formula.\n";
     } else {
-            //do the real modelcheck
-            //check if ap's are in the automaton.
-            spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
-            spot::translator trans = spot::translator(fbdd);
-            //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
-            trans.set_level(spot::postprocessor::Low);
-            spot::twa_graph_ptr aftemp = trans.run(f);
-            std::vector<spot::formula> v = aut->ap();
-            bool apmismatch = false;
-            for (spot::formula ap: aftemp->ap())
-                if (std::find(v.begin(), v.end(), ap) != v.end()) {} //exists?
-                else {
-                    apmismatch = true;
-                    break;
-                }
-            if (apmismatch) {
-                sout << "ERROR, atomic propositions in formula are not in automaton.\n";
-            } else {
+        //do the real modelcheck
+        //check if ap's are in the automaton.
+        spot::bdd_dict_ptr fbdd = spot::make_bdd_dict();
+        spot::translator trans = spot::translator(fbdd);
+        //'Low' . consequence: checking intersecting-run can take longer as the f-automaton is not the smallest
+        trans.set_level(spot::postprocessor::Low);
+        spot::twa_graph_ptr aftemp = trans.run(f);
+        std::vector<spot::formula> v = aut->ap();
+        bool apmismatch = false;
+        for (spot::formula ap: aftemp->ap())
+            if (std::find(v.begin(), v.end(), ap) != v.end()) {} //exists?
+            else {
+                apmismatch = true;
+                break;
+            }
+        if (apmismatch) {
+            sout << "ERROR, atomic propositions in formula are not in automaton.\n";
+        } else {
 
-                spot::formula nf = spot::formula::Not(f);
-                spot::translator ntrans = spot::translator(bdd);
-                ntrans.set_level(spot::postprocessor::Low);
+            spot::formula nf = spot::formula::Not(f);
+            spot::translator ntrans = spot::translator(bdd);
+            ntrans.set_level(spot::postprocessor::Low);
 
-                spot::twa_graph_ptr af = ntrans.run(nf);
-                bool nonempty;
-                spot::twa_run_ptr run;
-                if (!witness) {
-                    nonempty = aut->intersects(af);
-                    if (nonempty) {
-                        sout << "FAIL, no counterexample requested.\n";
-                    } else {
-                        sout << "PASS, no witness requested.\n";
-                    }
+            spot::twa_graph_ptr af = ntrans.run(nf);
+            bool nonempty;
+            spot::twa_run_ptr run;
+            if (!witness) {
+                nonempty = aut->intersects(af);
+                if (nonempty) {
+                    sout << "FAIL, no counterexample requested.\n";
                 } else {
+                    sout << "PASS, no witness requested.\n";
+                }
+            } else {
+                run = aut->intersecting_run(af);
+                if (run) {
+                    sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
+                } else {
+                    af = spot::translator(bdd).run(f);
                     run = aut->intersecting_run(af);
-                    if (run) {
-                        sout << "FAIL, with counterexample:  \n" << *run; //needs emptiness.hh
-                    } else {
-                        af = spot::translator(bdd).run(f);
-                        run = aut->intersecting_run(af);
-                        sout << "PASS, with witness: \n" << *run;
-                    }
+                    sout << "PASS, with witness: \n" << *run;
                 }
             }
+        }
     }
     return sout.str();
 }
@@ -412,22 +431,22 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
     if (ltlf_alive_ap.length() != 0) {
         spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
         std::string ltlf_string = str_psl(finitef);
+        pf = spot::parse_infix_psl(ltlf_string);
+        sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+        std::string lastUntil = " U ";
+        std::string weakUntil = " W ";
+        std::size_t found = ltlf_string.rfind(lastUntil);
+        if (found != std::string::npos) { //equality should not occur
+            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            // used to check liveness in scc's, but allow dangling requests in final trace
+            findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
+            findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
+            findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
+            findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
             pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
-            std::string lastUntil = " U ";
-            std::string weakUntil = " W ";
-            std::size_t found = ltlf_string.rfind(lastUntil);
-            if (found != std::string::npos) { //equality should not occur
-                ltlf_string.replace(found, lastUntil.length(), weakUntil);
-                // used to check liveness in scc's, but allow dangling requests in final trace
-                findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
-                findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
-                findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
-                findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
-                pf = spot::parse_infix_psl(ltlf_string);
-                sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
+            sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
 
-            }
+        }
 
     }
     sout << "\n";
@@ -438,33 +457,33 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
         sout << "ERROR, syntax error while parsing last formula.\n";
     } else {
         sout << "Syntax is valid for last formula.\n";
-        }
+    }
     return sout.str();
 }
 
 
-std::int8_t model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
+bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
         //alive U G(!alive): the 'U' makes that dead is required in all paths
         std::string tracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
         std::string formula_result = check_property(tracetodead, false, false, ltlf_alive_ap, bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
-        return  (found != std::string::npos) ;
+        return (found != std::string::npos);
     } else
         return false;
 
 }
 
 void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
-    std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
+                      std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
     std::string f;
     bool tracetodead = false;
-        tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
+    tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f == "") break;
-        if (originalandltlf ) {
-            formula_result = check_property(f, tracetodead,  witness, "", bdd, pa_ptr->aut);
+        if (originalandltlf) {
+            formula_result = check_property(f, tracetodead, witness, "", bdd, pa_ptr->aut);
             out << formula_result;
         }
         formula_result = check_property(f, tracetodead, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
@@ -475,14 +494,14 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
 }
 
 void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
-        std::string formula_result;
-        std::string f;
-        while (getline(col_in, f)) {
-            if (f == "") break;
-            formula_result = check_formulaproperty(f, ltlf_alive_ap);
-            out << formula_result;
-        }
-        out << "=== Formula\n";  // add closing tag for formulas
+    std::string formula_result;
+    std::string f;
+    while (getline(col_in, f)) {
+        if (f == "") break;
+        formula_result = check_formulaproperty(f, ltlf_alive_ap);
+        out << formula_result;
+    }
+    out << "=== Formula\n";  // add closing tag for formulas
 }
 
 
@@ -515,12 +534,12 @@ int main(int argc, char *argv[]) {
     std::string formulafile = getCmdOption(argc, argv, "--ff");
     std::string ltlf = getCmdOption(argc, argv, "--ltlf");
     std::string ltl2f = getCmdOption(argc, argv, "--ltl2f");
-    std::string witness = getCmdOption(argc, argv, "--witnes",true );//deliberate missing last char
-    std::string checkonlyformulas = getCmdOption(argc, argv, "--fonl", true );
+    std::string witness = getCmdOption(argc, argv, "--witnes", true);//deliberate missing last char
+    std::string checkonlyformulas = getCmdOption(argc, argv, "--fonl", true);
     //std::string outfile = "" ; //getCmdOption(argc, argv, "--o");
 
     onlyformulasyntax = (checkonlyformulas == "y");
-    if ( not onlyformulasyntax) {
+    if (not onlyformulasyntax) {
         if (stdinput == "n") {
             automaton_filename = ""; //empty implies: stdin must be read
         } else if (automaton.empty()) {
@@ -550,16 +569,15 @@ int main(int argc, char *argv[]) {
         formula = singleformula;
 
     dowitness = (witness == "s");
-
-    if (onlyformulasyntax) {
+    ltlf_alive_ap = "";
+    if (not ltl2f.empty()) {
+        ltlf_alive_ap = ltl2f;
+    } else if (not ltlf.empty()) {
+        ltlf_alive_ap = ltlf;
+    } else if (onlyformulasyntax) {
         ltlf_alive_ap = "!dead";
-    } else {
-        if (not ltl2f.empty()) {
-            ltlf_alive_ap = ltl2f;
-        } else if (not ltlf.empty()) {
-            ltlf_alive_ap = ltlf;
-        }
     }
+
     // commandline sanitation done
 
     std::cout << startLog;
@@ -579,27 +597,9 @@ int main(int argc, char *argv[]) {
         std::string res = loadAutomatonFromFile(bdd, pa, automaton_filename);
         if (res.empty()) {
             std::cout << "=== ";
-            std::int8_t dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
-            custom_print(std::cout, pa->aut, 0);
-            if (ltlf_alive_ap.length() != 0) {
-                std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap
-                          << "\"\n";
-                std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
-                std::cout
-                        << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
-                std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
-                std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
-                std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
-                std::cout << "     d. R and W operators do not require any modification \n";
-                std::cout << "     Example:\n";
-                std::cout
-                        << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
-                std::cout
-                        << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead))) & (!dead W G(dead))\n";
-                std::cout
-                        << "     This adaption ensures liveness checks in SCC's while allowing a dangling request  in the final trace to 'dead'\n";
-                std::cout << "  (This automaton has " << (dag ? "no" : "") << "loops)\n";
-            }
+            bool dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
+            custom_print(std::cout, pa->aut, 0, ltlf_alive_ap,dag);
+
             std::string auttitle = getAutomatonTitle(pa->aut);
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
             std::cout << "=== Automaton\n";
@@ -613,10 +613,10 @@ int main(int argc, char *argv[]) {
             } else if (!formula.empty()) {
                 std::istringstream s_in;
                 s_in.str(formula);
-                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),  dowitness,
+                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
                                  std::cout);
             } else
-                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltl2f.empty(),  dowitness,
+                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
                                  std::cout);
         } else {
             std::cout << res << "\n";
@@ -628,23 +628,19 @@ int main(int argc, char *argv[]) {
             strcpy(fnamearray, copyofmodel.c_str());
             std::remove(fnamearray);
         }
-    }
-    else {
+    } else {
 
         if (!formulafilename.empty()) {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
             check_formulacollection(f_in, ltlf_alive_ap, std::cout);
-        }
-        else
-            if (!formula.empty()) {
+        } else if (!formula.empty()) {
             std::istringstream s_in;
             s_in.str(formula);
             check_formulacollection(s_in, ltlf_alive_ap, std::cout);
-        }
-            else
+        } else
             check_formulacollection(std::cin, ltlf_alive_ap, std::cout);
     }
-  std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
+    std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
     return 0;
 }

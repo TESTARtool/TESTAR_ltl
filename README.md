@@ -27,17 +27,17 @@ optional.  the single LTL formula/property to check.
 optional.  filename containing multiple formulas/properties. 
 
 
---fonly 
-optional.  does not check against a model, but only verifies the formulas syntactically and
-provides ltlf version (by using  --ltlt !dead). outputs all formulas to the output.
-this option ignores --a, --ltlf --ltl2f,--witness.
+--fonly       
+optional.  Does not check against a model, but only verifies the formulas --sf or --ff syntactically and
+provides LTLF version.    
+(by using alive property from --ltlf or --ltl2f and by absence it uses '!dead'). this option ignores --a, --witness.
 
 --ltlf    
 optional.  usable for finite LTL (if the automaton contains dead states): 
-          Weaves an atomic proposition into the formula to label the 'alive' part. 
-          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!
-          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or
-          always transition to a(n artificial) dead-state with such a self-loop
+          Weaves an atomic proposition(AP) into the formula to label the 'alive' part. 
+          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!    
+          Terminal states in the model shall have a self-loop with 'dead' or '!alive' as the only property
+          or always transition to an artificial dead-state with such a self-loop
 
 --ltl2f   
 optional.  same as --ltlf but checks both the original formula and the ltlf variant
