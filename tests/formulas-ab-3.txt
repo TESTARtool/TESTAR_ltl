@@ -1,0 +1,20 @@
+a U b
+a  Wb
+a R b
+a M b
+Fa
+GFa
+Ga
+Xa
+F( a | Xb)
+F(Xb)
+F(b)
+GF(b)
+F( a & Xb)
+Xa | XFa
+G(a->F b)
+!dead & G(dead | (a -> F(b & !dead))) & (!dead W Gdead)
+!dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead W Gdead)
+!dead & G(dead | (a -> F((dead)|b & !dead))) & (!dead U Gdead)
+!dead & G(dead | (a -> F((dead)))) & (!dead U Gdead)
+G(a U b)

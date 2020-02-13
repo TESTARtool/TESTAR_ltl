@@ -17,3 +17,7 @@ State: 3
 [0] 1 {0}
 --END--
 EOF_HOA
+a->Fb
+c->Fb
+b->Fb
+~a U c

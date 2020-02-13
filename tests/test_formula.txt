@@ -1,0 +1,4 @@
+a->Fb
+c->Fb
+b->Fb
+~a U c

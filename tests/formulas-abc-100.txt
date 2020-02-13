@@ -1,0 +1,100 @@
+0
+0 R b
+F(XG(F!b M Fb) W (b R a))
+F(a R !c)
+G(a | Fb) W (FGb R !b)
+X!(Xa U !c)
+Fc | !(X(c xor Gc) R (b W !Fc))
+XXG((Xb R (a W c)) -> (c R GXa))
+XXF(a R b)
+c & Xa
+c <-> G!(!GXa W ((a xor b) | Gb))
+c & (c W !Xb)
+(b R G!c) | G(b U !a)
+(b W a) U b
+F!G(!Gc W c)
+G!c & (!((b & Fc) M c) U c)
+!X!c <-> (a W (1 U X!c))
+FG(Xa xor !(a W c))
+XX(1 U ((X(b W a) M 1) R c))
+(Xb | X(b & c)) M Ga
+c M ((a & ((a xor Gb) M 1)) | (Fa -> a))
+1
+!XFc
+X!XG(a <-> c)
+Fc <-> G(X!c M 1)
+(b | GFXb) -> (a xor b)
+!c
+b <-> !b
+F(!a R c) | (b <-> XX(!Gb R b))
+X!G(0 R (b M 1))
+X!c U a
+Fc & XXGF!X!a
+XF((Fc <-> (!b W c)) <-> (Gc M 1))
+G(F!Gc U (!Gc & Xc))
+F((!b | FGc) -> (b W (!c <-> Xc)))
+(X(a W Fc) -> a) R a
+((a xor b) -> a) U (Ga & (b R c))
+!Xa & (Gb R (Xa W 0))
+F((a M Xc) | FG(Xb <-> X(b | c)))
+G((1 U c) W (b & (1 U b)))
+Gb U !(Fb | XGc)
+X!c
+!b & (Fb xor (!Fc xor !Fb))
+!Gb
+((1 U c) -> (!c <-> (c -> b))) U (a <-> Xc)
+F(c U Xa)
+GXFGa <-> G!F!XF!Ga
+Gb
+a
+(!b <-> XFc) <-> GX!c
+Xb | (c & ((b M (Fb W 0)) U X!a))
+G(Xc M FXa)
+X(b U GFa) R XXc
+XFG!a
+!(!b xor c) & Gb
+(a | c) <-> (a xor XXG(c & Xa))
+!(c <-> Gb) & (!a M 1)
+G(((c -> a) U b) -> GFa)
+F!b M !a
+((b R c) | F!XGF(b | c)) R !b
+(b U c) U (!c | ((Fa U (a & c)) M 1))
+XX((b -> (a & (a -> c))) & Gc)
+F((1 U a) W (!a -> !Gb))
+a | XG(b & F!a)
+(b M c) | (!c xor !Fb)
+G(1 U c)
+GF(!(a <-> b) -> (!a & !c))
+0 R Xb
+a M 1
+G(Fa M 1)
+(b -> c) <-> (1 U c)
+FXXc
+Xc U Ga
+(a & c) | X(a & c)
+F(XGc -> (1 U (a -> Xb)))
+b
+!(Xc -> (b W a))
+!a W !Xb
+(GXa -> Gb) M !(Xa <-> Ga)
+!Xa R (c -> (X(Xa | Gc) W c))
+b U ((b | !c) M 1)
+G((Fa W !a) xor (0 R c))
+(Fa & Xc) | G(b U Ga)
+a xor Gc
+X!(((c <-> (!a M b)) W 0) W 0)
+F!b | F(1 U Fa)
+Ga -> X!b
+a -> (0 R Xc)
+b R Fc
+Xb & ((1 U a) -> (Gb R a))
+!Xc
+Ga R (F(c -> Gc) W X!b)
+(a W c) -> Gc
+G!G(FGa & GF(b -> Fa))
+b U (c W Fa)
+GF(Xa U c)
+(1 U c) W (0 R a)
+((a xor b) | X((b R Gc) R Fc)) W Gc
+!b M 1
+G!G(b R FGc)
