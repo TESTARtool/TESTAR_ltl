@@ -25,7 +25,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200209";
+const std::string version = "20200224";
 std::chrono::system_clock::time_point clock_start, clock_end;
 
 //https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
@@ -310,19 +310,20 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
                   << "\"\n";
         std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
         std::cout
-                << "  2. If the automaton also contains loops (~ is not a DAG), then also the following is applied: \n";
+                << "  2. If the automaton also contains cycles (~ is not a DAG), then also the following is applied: \n";
         std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
         std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
         std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
         std::cout << "     d. R and W operators do not require any modification \n";
-        std::cout << "     Example:\n";
+        std::cout << "     Example for translating G(p0 -> F(p1)):\n";
         std::cout
-                << "       G(p0 -> F(p1) first becomes (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead)) & (!dead U G(dead))\n";
+                << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
         std::cout
-                << "       and finally transformed to            : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead))) & (!dead W G(dead))\n";
+                << "       and final pass       : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
         std::cout
-                << "     This adaption ensures liveness checks in SCC's while allowing a dangling request  in the final trace to 'dead'\n";
-        std::cout << "  (This automaton has " << (dag ? "no" : "") << "loops)\n";
+                << "     Semantically, this adaption ensures liveness checks in SCC's \n";
+        std::cout << "     while allowing a dangling request in the finite suffix of a trace to a terminal state\n";
+        std::cout << "  (This automaton has " << (dag ? "no" : "") << "cycles in the 'alive' part)\n";
     }
 }
 
