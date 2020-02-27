@@ -1,0 +1,20 @@
+p0 U p1
+p0  Wp1
+p0 R p1
+p0 M p1
+Fp0
+GFp0
+Gp0
+Xp0
+F( p0 | Xp1)
+F(Xp1)
+F(p1)
+GF(p1)
+F( p0 & Xp1)
+Xp0 | XFp0
+G(p0->F p1)
+!dead & G(dead | (p0 -> F(p1 & !dead))) & (!dead W Gdead)
+!dead & G(dead | (p0 -> F((dead)|p1 & !dead))) & (!dead W Gdead)
+!dead & G(dead | (p0 -> F((dead)|p1 & !dead))) & (!dead U Gdead)
+!dead & G(dead | (p0 -> F((dead)))) & (!dead U Gdead)
+G(p0 U p1)

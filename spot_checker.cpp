@@ -467,7 +467,7 @@ bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot:
     if (ltlf_alive_ap.length() != 0) {
         //alive U G(!alive): the 'U' makes that dead is required in all paths
         std::string tracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
-        std::string formula_result = check_property(tracetodead, false, false, ltlf_alive_ap, bdd, aut);
+        std::string formula_result = check_property(tracetodead, false, false, "", bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
         return (found != std::string::npos);
     } else
