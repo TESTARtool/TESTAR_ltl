@@ -1,4 +1,10 @@
-//cseng 2019-2020
+/** \file
+This TESTAR wrapper for interfacing to the SPOT library consists of a single C++ sourcecode file,
+with imperative function calls to subroutines.
+The usage as a CLI is described in \ref README.md
+
+cseng 2019-2020
+ */
 #include <iostream>
 #include <string>
 #include <spot/tl/parse.hh>
@@ -25,11 +31,16 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200224";
-std::chrono::system_clock::time_point clock_start, clock_end;
+const std::string version = "20200224"; /**<  version of the application */
+std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */
 
-//https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
-
+/**
+ * Find the position of the matching closing parenthesis ')'
+ * @param data      string to search
+ * @param openPos   int pointing to the position of the opening parenthesis
+ * @return int       position of the matching closing parenthesis
+ * inspired by https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
+ */
 int findClosingParenthesis(std::string &data, int openPos) {
     char text[data.size() + 1];
     data.copy(text, data.size() + 1);
@@ -46,7 +57,16 @@ int findClosingParenthesis(std::string &data, int openPos) {
     }
     return closePos;
 }
-
+/**
+ * Find the position of the matching opening parenthesis '('
+ * (search from right to left)
+ * @param data      string to search
+ * @param closePos   int pointing to the position of the closing parenthesis
+ * @return int       position of the matching opening parenthesis
+ *
+ *
+ * inspired by https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
+ */
 int findOpeningParenthesis(std::string &data, int closePos) {
     char text[data.size() + 1];
     data.copy(text, data.size() + 1);
@@ -64,7 +84,15 @@ int findOpeningParenthesis(std::string &data, int closePos) {
     return openPos;
 }
 
-//https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
+/**
+ * Find any matching substring and replace all occurrences with an other string
+ * @param data          string that might contain substrings to search
+ * @param toSearch      substring to search for
+ * @param replaceStr    replacement string when an occurrence is found
+ *
+ *
+ * inspired by https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
+ */
 void findAndReplaceAll(std::string &data, std::string toSearch, std::string replaceStr) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
@@ -78,7 +106,19 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
     }
 }
 
-//custom for TESTAR
+/**
+ * Find any matching substring and surround all occurrences with 'replacestring' + 'substring' + 'closing'
+ *
+ * @param data          string that might contain substrings to search
+ * @param toSearch      substring to search for
+ * @param replaceStr    prefix of the embedding
+ * @param closing       suffix of the embedding
+ *
+ *
+ * inspired by  https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c \n
+ * customized  for TESTAR
+ */
+
 void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
@@ -94,7 +134,18 @@ void findForwardAndInsertAll(std::string &data, std::string toSearch, std::strin
         pos = data.find(toSearch, pos + toSearch.size() + replaceStr.size() + orginalblock.size() + closing.size());
     }
 }
-
+/**
+ * Find any matching substring and surround all occurrences with 'replacestring' + 'substring' + 'closing'
+ * (search from right to left)
+ * @param data          string that might contain substrings to search
+ * @param toSearch      substring to search for
+ * @param replaceStr    suffix of the embedding
+ * @param opening       prefix of the embedding
+ *
+ *
+ * inspired by https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c \n
+ * customized  for TESTAR
+ */
 void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string opening) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
@@ -113,7 +164,11 @@ void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::stri
     }
 }
 
-
+/**
+ * Get the system time as a string
+ * The preferred date and time representation for the current locale
+ * @return date and time  as string ( formated with  'c%' )
+ */
 std::string getCurrentLocalTime() {
     time_t curr_time;
     tm *curr_tm;
@@ -124,21 +179,33 @@ std::string getCurrentLocalTime() {
     return date_timestring;
 
 }
-
+/**
+ *
+ * @return  Calculate the throughput time in seconds since the start of the program
+ */
 double getElapsedtime() {
 
     clock_end = std::chrono::system_clock::now();
     std::chrono::duration<float> elapsed_seconds = clock_end - clock_start;
     return (elapsed_seconds.count());
 }
-
+/**
+ *
+ * @return string with a static text "elapsed_seconds:" and the elapsed time in seconds
+ */
 std::string log_elapsedtime() {
     return "elapsed_seconds: " + std::to_string(getElapsedtime()) + ";";
 }
 
-
+/**
+ * computes the actual memory consumption information consisting of RSS,Shared, EXe and Data allocation
+ *
+ * @return formatted string of some memory components
+ * inspired by https://gist.github.com/thirdwing/da4621eb163a886a03c5
+ * see also  http://man7.org/linux/man-pages/man5/proc.5.html
+ */
 std::string log_mem_usage()
-// inspired by https://gist.github.com/thirdwing/da4621eb163a886a03c5
+
 {
     long mem_size;
     long mem_rss;
@@ -149,7 +216,7 @@ std::string log_mem_usage()
     long mem_dt; // always 0
     long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
 
-    { // see http://man7.org/linux/man-pages/man5/proc.5.html
+    {
         std::string ignore;
         std::ifstream ifs("/proc/self/statm", std::ios_base::in);
         ifs >> mem_size >> mem_rss >> mem_shared >> mem_text >> mem_lib >> mem_data >> mem_dt;
@@ -164,8 +231,22 @@ std::string log_mem_usage()
             "; Data: " + std::to_string(static_cast<int>(mem_data) * page_size_kb);
 }
 
-//inspired by https://gist.github.com/plasticbox/3708a6cdfbece8cd224487f9ca9794cd
-
+//
+/**
+ * Simple commandline parser.
+ * @param argc number of arguments on the commandline
+ * @param argv pointer to the list of arguments
+ * @param option the option to search for in the argiument list.
+ * @param novalue if the option is a boolean and does require a value to read in
+ *          If True the next argv is regarded as the value for the option
+ *          If False the option is a boolean and does not require a value form the commandline
+ * @return  empty string is the option is not found
+ *          if the option is found, it returns the next argment value on the commandline.
+ *          if option is found and novalue is True, it returns the remainder of the argument (substracts option)
+ *
+ *          example: if the argument is '--pleasedothis' and the option is '--pleasedot' the return wil be : 'his'
+ * inspired by https://gist.github.com/plasticbox/3708a6cdfbece8cd224487f9ca9794cd
+ */
 std::string getCmdOption(int argc, char *argv[], const std::string &option, bool novalue = false) {
     std::string cmd;
     for (int i = 0; i < argc; ++i) {
@@ -176,7 +257,7 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
                 size_t b = option.size();
                 size_t c = 1;
                 cmd = arg.substr(b, c);//, a-b);
-                //'+' in stead of ','  and the one-off costed me an evening
+                //'+' in stead of ','  and the one-off cost me an evening
                 return cmd;
             } else if (i < (argc - 1)) {//take the next argument as value
                 cmd = argv[i + 1];
@@ -187,7 +268,11 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
     return cmd;
 }
 
-
+/**
+ * Writes a stream to a file. The stream will stop after the string "EOF_HOA" or the last line
+ * @param autin         containing  HOA formatted content
+ * @param copyTofilename filename to copy the stream to.
+ */
 void streamAutomatonToFile(std::istream &autin, std::string copyTofilename) {
     //the parser can only load from file , not from a stream.
     std::ofstream aut_file;
@@ -204,7 +289,13 @@ void streamAutomatonToFile(std::istream &autin, std::string copyTofilename) {
         }
     }
 }
-
+/**
+ * Loads the file as a SPOT automaton
+ * @param bdd binary decision diagram that hosts the atomic propositions of the automaton
+ * @param pa_ptr pointer to the automaton to be populated
+ * @param hoafile string of the full path of the file
+ * @return empty string on success. Error string on failure
+ */
 std::string loadAutomatonFromFile(spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr, const std::string &hoafile) {
     //loads only the first automaton in the file!
     pa_ptr = parse_aut(hoafile, bdd);
@@ -215,7 +306,11 @@ std::string loadAutomatonFromFile(spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr 
     return "";
 }
 
-
+/**
+ * Prints the Instruction for use of the correct parameters to the stream.
+ * @param out stream to write the contents to.
+ * (Usually std-out)
+ */
 void print_help(std::ostream &out) {
     out << "\n";
     out << "Program version : " << version << "\n";
@@ -247,7 +342,18 @@ void print_help(std::ostream &out) {
     out << "          can make the program unresponsive or even time-out due to lack of memory. \n";
 }
 
-
+/**
+ * Modification of the custom_print function on SPOT website
+ * Print automaton properties and statistics to the out-stream
+ * Prints information on the LTL on finite traces / models with terminal states
+ * Prints info whether the Model is a DAG, directed acyclic graph
+ *
+ * @param out           stream to write the contents to
+ * @param aut           automaton to inspect
+ * @param verbosity     provides detail per state. advised to leave this as 0
+ * @param ltlf_alive_ap if non empty this will write information on finite/terminal
+ * @param dag           if the model is a dag
+ */
 void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
     // from SPOT website. We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr &dict = aut->get_dict();
@@ -326,7 +432,11 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "  (This automaton has " << (dag ? "no" : "") << "cycles in the 'alive' part)\n";
     }
 }
-
+/**
+ * Gets the title from the SPOT automaton
+ * @param aut automaton
+ * @return will be empty string when no title is provided
+ */
 std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
     auto name = aut->get_named_prop<std::string>("automaton-name");
     if (name != nullptr) {
@@ -336,7 +446,20 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
     }
 }
 
-
+/**
+ * Model checks a single LTL formula on the Buchi automaton
+ * This function checks the syntax of the formula and
+ * whether the atomic propositions of the formula occur in the automaton.
+ * for 'incomplete models the formulas are converted to their LTLf variant \see custom_print
+ *
+ * @param formula           LTL formula to check
+ * @param tracetodead       equivalent to model == dag
+ * @param witness           provide a witness (if formula PASSes or counterexample if formula FAILs )
+ * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
+ * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
+ * @param aut               buchi automaton
+ * @return                  multiline stroing with PASS or FAIL infomration, timing and counterexample traces.
+ */
 std::string check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
                            spot::bdd_dict_ptr &bdd,
                            spot::twa_graph_ptr &aut) {
@@ -422,7 +545,15 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
     }
     return sout.str();
 }
-
+/**
+ * Verifies whether the formula has a valid LTL syntax
+ *
+ * @param formula       formula to verify
+ * @param ltlf_alive_ap the identifier  of the property that is TRUE on the alive part of the model.
+ *                      if non empty: rewrite the formula to LTLf variants
+ * @return              multiline string with the original formula,
+ *                      LTLf variants and verdict if the formula is valid or not.
+ */
 std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap) {
 
     std::ostringstream sout;  //needed for capturing output of run.
@@ -462,7 +593,14 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
     return sout.str();
 }
 
-
+/**
+ * Checks whether the Model is a DAG with only a selfloop for terminal states
+ *
+ * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
+ * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
+ * @param aut               buchi automaton
+ * @return                  False if ltlf_alive_ap is empty otherwise it wil check for DAG property
+ */
 bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
         //alive U G(!alive): the 'U' makes that dead is required in all paths
@@ -474,7 +612,18 @@ bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot:
         return false;
 
 }
-
+/**
+ * Model check a collection of LTL formulas
+ * @param col_in            stream containing a collection of formulas
+ * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
+ * @param pa_ptr            pointer to the automaton
+ * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
+ * @param originalandltlf   perform the check twice on both original and LTLf or just LTLf?
+ * @param witness           ask for a witness (if formula PASSes or counterexample if formula FAILs )
+ * @param out               stream for collection the results
+ *
+ * delegates checking of individual formulas to \see check_property
+ */
 void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
                       std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
@@ -493,7 +642,14 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
     }
     out << "=== Formula\n";  // add closing tag for formulas
 }
-
+/**
+ *  Verifies whether a collection of  formulas has a valid LTL syntax
+ * @param col_in            stream containing a collection of formulas
+ * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of a model.
+ * @param out               stream for collection the results
+ *
+ *  delegates checking of individual formulas to \see check_formula
+ */
 void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
     std::string formula_result;
     std::string f;
@@ -505,7 +661,21 @@ void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, st
     out << "=== Formula\n";  // add closing tag for formulas
 }
 
-
+/**
+ * Entry point of the application:  Standard C/C++ routine
+ * Schematically:
+ * Starts the clock
+ * Parse the commandline
+ * Outputs with print_help if there was an error and terminates
+ * Copy the automaton to a local file
+ * Model-check the formula(s) or just validates formula(s)
+ * Removes temporary files: automaton and property file
+ * Terminates with exit code zero
+ *
+ * @param argc
+ * @param argv
+ * @return      zero if the progrma terminates succesfully
+ */
 int main(int argc, char *argv[]) {
     // do stuff;
     std::string automaton_filename;
