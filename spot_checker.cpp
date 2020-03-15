@@ -662,15 +662,15 @@ void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, st
 }
 
 /**
- * Entry point of the application:  Standard C/C++ routine
- * Schematically:
- * Starts the clock
- * Parse the commandline
- * Outputs with print_help if there was an error and terminates
- * Copy the automaton to a local file
- * Model-check the formula(s) or just validates formula(s)
- * Removes temporary files: automaton and property file
- * Terminates with exit code zero
+ * Entry point of the application:  Standard C/C++ routine \n
+ * Schematically:\n
+ * Starts the clock\n
+ * Parse the commandline\n
+ * Outputs with print_help if there was an error and terminates\n
+ * Copy the automaton to a local file\n
+ * Model-check the formula(s) or just validates formula(s)\n
+ * Removes temporary files: automaton and property file\n
+ * Terminates with exit code zero\n
  *
  * @param argc
  * @param argv
