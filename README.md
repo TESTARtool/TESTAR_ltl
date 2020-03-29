@@ -5,6 +5,8 @@
   - The code of the model checker is from the SPOT library (https://spot.lrde.epita.fr/).
   - The wrapper takes in a file with an automaton and (a file with) formulas
   - and returns the results in a format that TESTAR is able to parse.
+  - The command is developed on  Ubuntu 18.04 and is inteded to run on Windows Subsystem for Linux (WSL).
+  - WSL v1903 or higher is recommended.
   
 
 Program version : 20200224
