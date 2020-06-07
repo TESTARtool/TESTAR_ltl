@@ -326,13 +326,13 @@ void print_help(std::ostream &out) {
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
     out
             << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variant. ignores options --a,--witness\n";
-    out << "          uses '!dead' as ltlf value in case there is no --ltl(2)f option supplied.\n";
-    out << "--ltlf    optional.  usable for finite LTL (if the automaton contains dead states): \n";
+    out << "          uses '!dead' as default value in case there is no --ltl(2)f option supplied.\n";
+    out << "--ltlf    optional.  usable for model-checking on finite LTL (if the automaton contains terminal states): \n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
-    out << "          e.g. '--ltlf !dead or --ltlf alive' . Note: this AP MUST exist in the automaton as well!!\n";
+    out << "          e.g. '--ltlf !dead or --ltlf alive'. Note: this proposition MUST exist in the automaton as well!!\n";
     out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
-    out << "          always transition to a(n artificial) dead-state with such a self-loop\n";
-    out << "--ltl2f   optional.  same as --ltlf but checks both the original formula and the ltlf variant\n";
+    out << "          always transition to a(n artificial) terminal-state with such a self-loop\n";
+    out << "--ltl2f   optional.  same as --ltlf but model-checks both the original formula and the ltlf variant\n";
     out << "--witness optional.  generates a trace: counterexample( for FAIL)or witness (for PASS)\n";
     //out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
     out << "\n";
