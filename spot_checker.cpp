@@ -31,8 +31,8 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200224"; /**<  version of the application */
-std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */
+const std::string version = "20200601"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
 /**
  * Find the position of the matching closing parenthesis ')'
@@ -119,15 +119,16 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
  * customized  for TESTAR
  */
 
-void findForwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
+void findClosingParenthesisAndInsert(std::string &data, std::string toSearch, std::string replaceStr, std::string closing) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
 
     // Repeat till end is reached
     while (pos != std::string::npos) {
         // Replace this occurrence of Sub String
-        //find matching bracket
-        int bracketpos = findClosingParenthesis(data, pos + toSearch.size() - 1); //assume last char is the "("
+        //find matching bracket. assume last char in the toSearch is the "("
+
+        int bracketpos = findClosingParenthesis(data, pos + toSearch.size() - 1); // NOLINT(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions)
         std::string orginalblock = data.substr(pos + toSearch.size() - 1, bracketpos - pos - 1);
         data.replace(pos, toSearch.size() + orginalblock.size() - 1, toSearch + replaceStr + orginalblock + closing);
         // Get the next occurrence from the current position
@@ -146,15 +147,16 @@ void findForwardAndInsertAll(std::string &data, std::string toSearch, std::strin
  * inspired by https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c \n
  * customized  for TESTAR
  */
-void findBackwardAndInsertAll(std::string &data, std::string toSearch, std::string replaceStr, std::string opening) {
+void findOpeningParenthesisAndInsert(std::string &data, std::string toSearch, std::string replaceStr, std::string opening) {
     // Get the first occurrence
     size_t pos = data.find(toSearch);
 
     // Repeat till end is reached
     while (pos != std::string::npos) {
         // Replace this occurrence of Sub String
-        //find matching bracket
-        int bracketpos = findOpeningParenthesis(data, pos - toSearch.size() + 1); //assume first char is the "("
+        //find matching bracket. assume first char in the toSearch is the ")"
+
+        int bracketpos = findOpeningParenthesis(data, pos - toSearch.size() + 1); // NOLINT(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions)
         std::string orginalblock = data.substr(bracketpos + 0, pos - bracketpos + 1);
         data.replace(bracketpos, toSearch.size() + orginalblock.size() - 1,
                      opening + orginalblock + replaceStr + toSearch);
@@ -253,7 +255,7 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
         std::string arg = argv[i];
         if (0 == arg.find(option)) { //match from start
             if (novalue) { //option without a value
-                int a = arg.size();
+                //int a = arg.size();
                 size_t b = option.size();
                 size_t c = 1;
                 cmd = arg.substr(b, c);//, a-b);
@@ -415,19 +417,23 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "Finite LTL checking  with 'alive' proposition instantiated as \"" << ltlf_alive_ap
                   << "\"\n";
         std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
+        std::cout << "     key is the operators enrichment: X (p) => X(p & !dead) , p U Q => p U (q & !dead)\n";
+        std::cout << "     and the the termination requirement !dead U G(dead)\n";
         std::cout
-                << "  2. If the automaton also contains cycles (~ is not a DAG), then also the following is applied: \n";
-        std::cout << "     a. the last U, which was induced by G&V-2013 is replaced by W \n";
-        std::cout << "     b. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
-        std::cout << "     c. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
-        std::cout << "     d. R and W operators do not require any modification \n";
+                << "  2. If the automaton also contains cycles (~ is not a DAG), then  the following is applied: \n";
+        std::cout << "     key is the operators enrichment: X (p) => X(p | dead) , p U Q => p U (q | dead)\n";
+        std::cout << "     and the the termination requirement !dead W G(dead)\n";
+        std::cout << "     technically accomplished by: \n";
+        std::cout << "       a. applying the logic of  G&V-2013\n";
+        std::cout << "       b. the last U, which was induced by G&V-2013 is replaced by W \n";
+        std::cout << "       c. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
+        std::cout << "       d. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
+        std::cout << "       e. G,R and W operators do not require any modification \n";
         std::cout << "     Example for translating G(p0 -> F(p1)):\n";
-        std::cout
-                << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
-        std::cout
-                << "       and final pass       : !dead & G(dead |(p0->F((!!dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
-        std::cout
-                << "     Semantically, this adaption ensures liveness checks in SCC's \n";
+        std::cout << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
+        std::cout << "       and final pass       : !dead & G(dead |(p0->F((dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
+        std::cout << "       equivalent to        : !dead & G(dead |(p0->F(p1 |dead))) & (!dead W G(dead))\n";
+        std::cout << "     Semantically, this adaption facilitates liveness checks in SCC's \n";
         std::cout << "     while allowing a dangling request in the finite suffix of a trace to a terminal state\n";
         std::cout << "  (This automaton has " << (dag ? "no" : "") << "cycles in the 'alive' part)\n";
     }
@@ -481,10 +487,14 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
             if (found != std::string::npos) { //equality should not occur
                 ltlf_string.replace(found, lastUntil.length(), weakUntil);
                 // check liveness in scc's, but allow dangling requests in final trace
-                findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
-                findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
-                findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
-                findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
+                if (ltlf_alive_ap.at(0) == '!') {
+                    ltlf_alive_ap=ltlf_alive_ap.substr(1);
+                }else{
+                    ltlf_alive_ap='!'+ltlf_alive_ap;}
+                findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
+                findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
+                findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
+                findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
                 pf = spot::parse_infix_psl(ltlf_string);
                 sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
 
@@ -571,10 +581,15 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
         if (found != std::string::npos) { //equality should not occur
             ltlf_string.replace(found, lastUntil.length(), weakUntil);
             // used to check liveness in scc's, but allow dangling requests in final trace
-            findForwardAndInsertAll(ltlf_string, "F(", "(!" + ltlf_alive_ap + ")|", ")");
-            findForwardAndInsertAll(ltlf_string, "X(", "(!" + ltlf_alive_ap + ")|", ")");
-            findForwardAndInsertAll(ltlf_string, "U (", "(!" + ltlf_alive_ap + ")|", ")");
-            findBackwardAndInsertAll(ltlf_string, ") M", "|(!" + ltlf_alive_ap + ")", "(");
+            if (ltlf_alive_ap.at(0) == '!') {
+                ltlf_alive_ap=ltlf_alive_ap.substr(1);
+            }else{
+                ltlf_alive_ap='!'+ltlf_alive_ap;}
+
+            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
+            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
             pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
 
@@ -628,10 +643,9 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
                       std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
     std::string f;
-    bool tracetodead = false;
-    tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
+    bool tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
-        if (f == "") break;
+        if (f.empty()) break;
         if (originalandltlf) {
             formula_result = check_property(f, tracetodead, witness, "", bdd, pa_ptr->aut);
             out << formula_result;
@@ -654,7 +668,7 @@ void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, st
     std::string formula_result;
     std::string f;
     while (getline(col_in, f)) {
-        if (f == "") break;
+        if (f.empty()) break;
         formula_result = check_formulaproperty(f, ltlf_alive_ap);
         out << formula_result;
     }
