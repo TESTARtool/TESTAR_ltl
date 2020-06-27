@@ -574,34 +574,41 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
     sout << "=== Formula\n";
     sout << "=== " + formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n"
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
-    if (ltlf_alive_ap.length() != 0) {
-        spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
-        std::string ltlf_string = str_psl(finitef);
-        //pf = spot::parse_infix_psl(ltlf_string);
-        sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+    bool syntaxOK = pf.errors.empty();
+    if (syntaxOK) {
 
-        std::string lastUntil = " U ";
-        std::string weakUntil = " W ";
-        std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
-        ltlf_string.replace(found, lastUntil.length(), weakUntil);
-        //pf = spot::parse_infix_psl(ltlf_string);
-        sout << "    [LTLF G&V-2013 WEAK-variant: " + ltlf_string + "]";
+        if (ltlf_alive_ap.length() != 0) {
+            spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
+            std::string ltlf_string = str_psl(finitef);
+            //pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
 
-        if (ltlf_alive_ap.at(0) == '!') {
-            ltlf_alive_ap=ltlf_alive_ap.substr(1);
-        }else{
-            ltlf_alive_ap='!'+ltlf_alive_ap;}
-        findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
-        findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
-        findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
-        findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
-        pf = spot::parse_infix_psl(ltlf_string);
-        sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
+            std::string lastUntil = " U ";
+            std::string weakUntil = " W ";
+            std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
+            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            //pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLF G&V-2013 WEAK-variant: " + ltlf_string + "]";
+
+            if (ltlf_alive_ap.at(0) == '!') {
+                ltlf_alive_ap = ltlf_alive_ap.substr(1);
+            } else {
+                ltlf_alive_ap = '!' + ltlf_alive_ap;
+            }
+            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
+            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
+            pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
+            syntaxOK = pf.errors.empty();
+        }
     }
-    sout << "\n";
+        sout << "\n";
+
     spot::formula f = pf.f;
     sout << "=== ";
-    bool syntaxOK = pf.errors.empty();
+
     if (!syntaxOK) {
         sout << "ERROR, syntax error while parsing last formula.\n";
     } else {
