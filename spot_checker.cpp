@@ -31,7 +31,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200601"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+const std::string version = "20200627"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
 std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
 /**
@@ -325,9 +325,13 @@ void print_help(std::ostream &out) {
     out << "--sf      optional.  the single LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
     out
-            << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variant. ignores options --a,--witness\n";
-    out << "          uses '!dead' as default value in case there is no --ltl(2)f option supplied.\n";
+            << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variants. ignores options --a,--witness\n";
+    out << "          uses '!dead' as default value in case there is no --ltl(2)f option supplied. LTLF variants: \n";
+    out << "          G&V-2013 : for traces or a DAG.\n";
+    out << "          G&V-2013 Weak: for safety properties on models with terminal states\n";
+    out << "          Model: for liveness properties on models with terminal states.\n";
     out << "--ltlf    optional.  usable for model-checking on finite LTL (if the automaton contains terminal states): \n";
+    out << "          Model-Check with variant G&V-2013 when the model is a trace otherwise the Model variant.\n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
     out << "          e.g. '--ltlf !dead or --ltlf alive'. Note: this proposition MUST exist in the automaton as well!!\n";
     out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
@@ -357,7 +361,7 @@ void print_help(std::ostream &out) {
  * @param dag           if the model is a dag
  */
 void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
-    // from SPOT website. We need the dictionary to print the BDDs that label the edges
+    // partially from SPOT website. We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr &dict = aut->get_dict();
     std::cout << "Properties of Automaton:\n";
     // Some meta-data...
@@ -432,8 +436,8 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "     Example for translating G(p0 -> F(p1)):\n";
         std::cout << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
         std::cout << "       and final pass       : !dead & G(dead |(p0->F((dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
-        std::cout << "       equivalent to        : !dead & G(dead |(p0->F(p1 |dead))) & (!dead W G(dead))\n";
-        std::cout << "     Semantically, this adaption facilitates liveness checks in SCC's \n";
+        std::cout << "       equivalent to        : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "     Semantically, this adaption facilitates liveness checks (in SCC's)\n";
         std::cout << "     while allowing a dangling request in the finite suffix of a trace to a terminal state\n";
         std::cout << "  (This automaton has " << (dag ? "no" : "") << "cycles in the 'alive' part)\n";
     }
@@ -573,28 +577,26 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
     if (ltlf_alive_ap.length() != 0) {
         spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
         std::string ltlf_string = str_psl(finitef);
-        pf = spot::parse_infix_psl(ltlf_string);
+        //pf = spot::parse_infix_psl(ltlf_string);
         sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+
         std::string lastUntil = " U ";
         std::string weakUntil = " W ";
-        std::size_t found = ltlf_string.rfind(lastUntil);
-        if (found != std::string::npos) { //equality should not occur
-            ltlf_string.replace(found, lastUntil.length(), weakUntil);
-            // used to check liveness in scc's, but allow dangling requests in final trace
-            if (ltlf_alive_ap.at(0) == '!') {
-                ltlf_alive_ap=ltlf_alive_ap.substr(1);
-            }else{
-                ltlf_alive_ap='!'+ltlf_alive_ap;}
+        std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
+        ltlf_string.replace(found, lastUntil.length(), weakUntil);
+        //pf = spot::parse_infix_psl(ltlf_string);
+        sout << "    [LTLF G&V-2013 WEAK-variant: " + ltlf_string + "]";
 
-            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
-            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
-            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
-            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
-            pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
-
-        }
-
+        if (ltlf_alive_ap.at(0) == '!') {
+            ltlf_alive_ap=ltlf_alive_ap.substr(1);
+        }else{
+            ltlf_alive_ap='!'+ltlf_alive_ap;}
+        findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
+        findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
+        findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
+        findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
+        pf = spot::parse_infix_psl(ltlf_string);
+        sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
     }
     sout << "\n";
     spot::formula f = pf.f;
