@@ -327,9 +327,9 @@ void print_help(std::ostream &out) {
     out
             << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variants. ignores options --a,--witness\n";
     out << "          uses '!dead' as default value in case there is no --ltl(2)f option supplied. LTLF variants: \n";
-    out << "          G&V-2013 : for traces or a DAG.\n";
+    out << "          G&V-2013     : for traces or a DAG.\n";
     out << "          G&V-2013 Weak: for safety properties on models with terminal states\n";
-    out << "          Model: for liveness properties on models with terminal states.\n";
+    out << "          Model        : for liveness properties on models with terminal states.\n";
     out << "--ltlf    optional.  usable for model-checking on finite LTL (if the automaton contains terminal states): \n";
     out << "          Model-Check with variant G&V-2013 when the model is a trace otherwise the Model variant.\n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
@@ -337,7 +337,7 @@ void print_help(std::ostream &out) {
     out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
     out << "          always transition to a(n artificial) terminal-state with such a self-loop\n";
     out << "--ltl2f   optional.  same as --ltlf but model-checks both the original formula and the ltlf variant\n";
-    out << "--witness optional.  generates a trace: counterexample( for FAIL)or witness (for PASS)\n";
+    out << "--witness optional.  generates a trace: counterexample (for FAIL) or witness (for PASS)\n";
     //out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
     out << "\n";
     out << "Use-case when only option --a is supplied (without --sf or --ff): \n";
@@ -439,16 +439,16 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "       and final pass       : !dead & G(dead |(p0->F((dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
         std::cout << "       equivalent to        : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
 */
-        std::cout << "     Example for translating G(p0 -> F(p1)):\n";
-        std::cout << "       G&V-2013      : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
-        std::cout << "       G&V-2013 Weak : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
-        std::cout << "       TESTARModel   : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "  3. Example for translating G(p0 -> F(p1)):\n";
+        std::cout << "     G&V-2013      : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
+        std::cout << "     G&V-2013 Weak : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
+        std::cout << "     TESTARModel   : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
         std::cout << "     Semantically, the variants facilitate the following: \n";
         std::cout << "     G&V-2013        : trace and DAG checking with LTL\n";
         std::cout << "     G&V-2013 Weak   : safety checks on 'terminal' models with LTL\n";
         std::cout << "     TESTARModel     : liveness checks (in all SCC's) while allowing a dangling request\n";
         std::cout << "                       in the finite suffix towards a terminal state\n";
-        std::cout << "  (This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part)\n";
+        std::cout << "  4. This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part\n";
     }
 }
 /**
