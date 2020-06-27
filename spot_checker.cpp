@@ -427,19 +427,28 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
                 << "  2. If the automaton also contains cycles (~ is not a DAG), then  the following is applied: \n";
         std::cout << "     key is the operators enrichment: X (p) => X(p | dead) , p U Q => p U (q | dead)\n";
         std::cout << "     and the the termination requirement !dead W G(dead)\n";
-        std::cout << "     technically accomplished by: \n";
+/*        std::cout << "     technically accomplished by: \n";
         std::cout << "       a. applying the logic of  G&V-2013\n";
         std::cout << "       b. the last U, which was induced by G&V-2013 is replaced by W \n";
         std::cout << "       c. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
         std::cout << "       d. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
         std::cout << "       e. G,R and W operators do not require any modification \n";
+
         std::cout << "     Example for translating G(p0 -> F(p1)):\n";
         std::cout << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
         std::cout << "       and final pass       : !dead & G(dead |(p0->F((dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
         std::cout << "       equivalent to        : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
-        std::cout << "     Semantically, this adaption facilitates liveness checks (in SCC's)\n";
-        std::cout << "     while allowing a dangling request in the finite suffix of a trace to a terminal state\n";
-        std::cout << "  (This automaton has " << (dag ? "no" : "") << "cycles in the 'alive' part)\n";
+*/
+        std::cout << "     Example for translating G(p0 -> F(p1)):\n";
+        std::cout << "       G&V-2013      : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
+        std::cout << "       G&V-2013 Weak : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
+        std::cout << "       TESTARModel   : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "     Semantically, the variants facilitate the following: \n";
+        std::cout << "     G&V-2013        : trace and DAG checking with LTL\n";
+        std::cout << "     G&V-2013 Weak   : safety checks on 'terminal' models with LTL\n";
+        std::cout << "     TESTARModel     : liveness checks (in all SCC's) while allowing a dangling request\n";
+        std::cout << "                       in the finite suffix towards a terminal state\n";
+        std::cout << "  (This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part)\n";
     }
 }
 /**
