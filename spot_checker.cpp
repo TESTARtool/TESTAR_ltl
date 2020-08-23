@@ -29,9 +29,15 @@ namespace fs = std::experimental::filesystem;
 #include <spot/tl/ltlf.hh>
 #include <regex>
 
+//consts
+#define LTL 'l'
+#define LTL_f 'f'
+#define LTL_sf 'm'
+#define LTL_lf 'c'
+
 
 // Globals
-const std::string version = "20200627"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+const std::string version = "20200823"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
 std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
 /**
@@ -238,7 +244,7 @@ std::string log_mem_usage()
  * Simple commandline parser.
  * @param argc number of arguments on the commandline
  * @param argv pointer to the list of arguments
- * @param option the option to search for in the argiument list.
+ * @param option the option to search for in the argument list.
  * @param novalue if the option is a boolean and does require a value to read in
  *          If True the next argv is regarded as the value for the option
  *          If False the option is a boolean and does not require a value form the commandline
@@ -324,27 +330,25 @@ void print_help(std::ostream &out) {
     out << "--a       mandatory unless --stdin is the argument. filename containing the automaton (HOA format). \n";
     out << "--sf      optional.  the single LTL formula/property to check.  \n";
     out << "--ff      optional.  filename containing multiple formulas/properties. \n";
-    out
-            << "--fonly   optional.  verifies the syntax of the given formulas and LTLF variants. ignores options --a,--witness\n";
-    out << "          uses '!dead' as default value in case there is no --ltl(2)f option supplied. LTLF variants: \n";
-    out << "          G&V-2013     : for traces or a DAG.\n";
-    out << "          G&V-2013 Weak: for safety properties on models with terminal states\n";
-    out << "          Model        : for liveness properties on models with terminal states.\n";
-    out << "--ltlf    optional.  usable for model-checking on finite LTL (if the automaton contains terminal states): \n";
-    out << "          Model-Check with variant G&V-2013 when the model is a trace otherwise the Model variant.\n";
+    out << "--fonly   optional.  verifies the syntax of the given formulas and LTL-Finite variants. ignores options --a,--witness\n";
+    out << "          uses '!dead' as default value in case there is no --ltl(x)f option supplied. LTL-Finite variants: \n";
+    out << "          LTLf (G&V-2013) : for traces or a DAG.\n";
+    out << "          LTLfs           : for safety properties on models with terminal states\n";
+    out << "          LTLfl           : for liveness properties (in SCC's) on models with terminal states.\n";
+    out << "--ltlf    optional.  usable for model-checking on finite LTL (~the automaton contains terminal states): \n";
+    out << "          Model-Check with variant LTLf when the model is a trace otherwise the LTLfl variant.\n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
     out << "          e.g. '--ltlf !dead or --ltlf alive'. Note: this proposition MUST exist in the automaton as well!!\n";
     out << "          terminal states in the model shall have a self-loop with AP='dead' or '!alive' or\n";
     out << "          always transition to a(n artificial) terminal-state with such a self-loop\n";
-    out << "--ltl2f   optional.  same as --ltlf but model-checks both the original formula and the ltlf variant\n";
+    out << "--ltlxf   optional.  model-checks the original formula AND ALL the LTL variants\n";
     out << "--witness optional.  generates a trace: counterexample (for FAIL) or witness (for PASS)\n";
-    //out << "--o       optional.  filename containing output. Without this option, output is via stdout\n\n";
     out << "\n";
     out << "Use-case when only option --a is supplied (without --sf or --ff): \n";
     out << "          The user can supply via stdin a formula/property. Results are returned via stdout.\n";
     out << "          The system will ask for a new formula. A blank line will stop the program. \n";
     out << "\n";
-    out << "Note:     large automatons (states,ap's), large formula (size, ap's) \n";
+    out << "Note:     large automatons (states,ap's) or large formula (size, ap's) \n";
     out << "          can make the program unresponsive or even time-out due to lack of memory. \n";
 }
 
@@ -422,33 +426,24 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
                   << "\"\n";
         std::cout << "  1. The logic of De Giacomo & Vardi 2013,2014 is applied for LTLf checking.\n";
         std::cout << "     key is the operators enrichment: X (p) => X(p & !dead) , p U Q => p U (q & !dead)\n";
-        std::cout << "     and the the termination requirement !dead U G(dead)\n";
+        std::cout << "     and the termination requirement !dead U G(dead)\n";
         std::cout
-                << "  2. If the automaton also contains cycles (~ is not a DAG), then  the following is applied: \n";
+                << "  2. For safety checks on models with cycles and terminal states the same as above is applied: \n";
+        std::cout << "     except for the termination requirement:  !dead W G(dead)\n";
+        std::cout
+                << "  3. For liveness checks on models with cycles and terminal states the following is applied: \n";
         std::cout << "     key is the operators enrichment: X (p) => X(p | dead) , p U Q => p U (q | dead)\n";
-        std::cout << "     and the the termination requirement !dead W G(dead)\n";
-/*        std::cout << "     technically accomplished by: \n";
-        std::cout << "       a. applying the logic of  G&V-2013\n";
-        std::cout << "       b. the last U, which was induced by G&V-2013 is replaced by W \n";
-        std::cout << "       c. and :'((dead) |(.....) )' is weaved/appended for any F,X,U \n";
-        std::cout << "       d. and :'( (.....)  | (dead))' is weaved/prepended for any  M \n";
-        std::cout << "       e. G,R and W operators do not require any modification \n";
-
-        std::cout << "     Example for translating G(p0 -> F(p1)):\n";
-        std::cout << "       first pass (G&V-2013): !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
-        std::cout << "       and final pass       : !dead & G(dead |(p0->F((dead) | (p1 & !dead)))) & (!dead W G(dead))\n";
-        std::cout << "       equivalent to        : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
-*/
-        std::cout << "  3. Example for translating G(p0 -> F(p1)):\n";
-        std::cout << "     G&V-2013      : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
-        std::cout << "     G&V-2013 Weak : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
-        std::cout << "     TESTARModel   : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "     and the termination requirement !dead W G(dead)\n";
+        std::cout << "  4. Example for translating G(p0 -> F(p1)):\n";
+        std::cout << "     LTLf (G&V-2013) : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
+        std::cout << "     LTLfs           : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
+        std::cout << "     LTLfl           : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
         std::cout << "     Semantically, the variants facilitate the following: \n";
-        std::cout << "     G&V-2013        : trace and DAG checking with LTL\n";
-        std::cout << "     G&V-2013 Weak   : safety checks on 'terminal' models with LTL\n";
-        std::cout << "     TESTARModel     : liveness checks (in all SCC's) while allowing a dangling request\n";
+        std::cout << "     LTLf (G&V-2013) : trace and DAG checking with LTL\n";
+        std::cout << "     LTLfs           : safety checks on 'terminal' models with LTL\n";
+        std::cout << "     LTLfl           : liveness checks (in all SCC's) while allowing a dangling request\n";
         std::cout << "                       in the finite suffix towards a terminal state\n";
-        std::cout << "  4. This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part\n";
+        std::cout << "  5. This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part\n";
     }
 }
 /**
@@ -469,7 +464,7 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * Model checks a single LTL formula on the Buchi automaton
  * This function checks the syntax of the formula and
  * whether the atomic propositions of the formula occur in the automaton.
- * for 'incomplete models the formulas are converted to their LTLf variant \see custom_print
+ * for 'terminalmodels the formulas are converted to their LTLf variant \see custom_print
  *
  * @param formula           LTL formula to check
  * @param tracetodead       equivalent to model == dag
@@ -477,9 +472,9 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
  * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
  * @param aut               buchi automaton
- * @return                  multiline stroing with PASS or FAIL infomration, timing and counterexample traces.
+ * @return                  multiline string with PASS or FAIL infomration, timing and counterexample traces.
  */
-std::string check_property(std::string formula, bool tracetodead, bool witness, std::string ltlf_alive_ap,
+std::string check_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
                            spot::bdd_dict_ptr &bdd,
                            spot::twa_graph_ptr &aut) {
 
@@ -487,16 +482,21 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
     sout << "=== Formula\n";
     sout << "=== " + formula;     //sout << "=== Start\n=== " << log_elapsedtime() << log_mem_usage()<<"\n"
     spot::parsed_formula pf = spot::parse_infix_psl(formula);
-    if (ltlf_alive_ap.length() != 0) {
-        spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
-        std::string ltlf_string = str_psl(finitef);
-        if (tracetodead) {
+    spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
+    std::string ltlf_string = str_psl(finitef);
+
+    std::string lastUntil = " U ";
+    std::string weakUntil = " W ";
+    std::size_t found ;
+    switch (ltlftype) {
+        case LTL :
+            break;
+        case LTL_f :
             pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
-        } else {
-            std::string lastUntil = " U ";
-            std::string weakUntil = " W ";
-            std::size_t found = ltlf_string.rfind(lastUntil);
+            sout << "    [LTLf: " + ltlf_string + "]";
+            break;
+        case LTL_lf :
+             found = ltlf_string.rfind(lastUntil);
             if (found != std::string::npos) { //equality should not occur
                 ltlf_string.replace(found, lastUntil.length(), weakUntil);
                 // check liveness in scc's, but allow dangling requests in final trace
@@ -509,11 +509,22 @@ std::string check_property(std::string formula, bool tracetodead, bool witness, 
                 findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
                 findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
                 pf = spot::parse_infix_psl(ltlf_string);
-                sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
-
+                sout << "    [LTLfs: " + ltlf_string + "]";
             }
-        }
+            break;
+        case LTL_sf :
+             found = ltlf_string.rfind(lastUntil);
+            if (found != std::string::npos) { //equality should not occur
+                ltlf_string.replace(found, lastUntil.length(), weakUntil);
+                pf = spot::parse_infix_psl(ltlf_string);
+                sout << "    [LTLfl: " + ltlf_string + "]";
+            }
+            break;
+        default :
+            sout << "ERROR, ltl subtype not defined";
     }
+
+
     sout << "\n";
     spot::formula f = pf.f;
     sout << "=== ";
@@ -590,26 +601,26 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
             spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
             std::string ltlf_string = str_psl(finitef);
             //pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF G&V-2013 variant: " + ltlf_string + "]";
+            sout << "    [LTLf: " + ltlf_string + "]";
 
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
             ltlf_string.replace(found, lastUntil.length(), weakUntil);
             //pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF G&V-2013 WEAK-variant: " + ltlf_string + "]";
-
+            sout << "    [LTLfs: " + ltlf_string + "]";
+            std::string ltlf_notalive_ap;
             if (ltlf_alive_ap.at(0) == '!') {
-                ltlf_alive_ap = ltlf_alive_ap.substr(1);
+                ltlf_notalive_ap = ltlf_alive_ap.substr(1);
             } else {
-                ltlf_alive_ap = '!' + ltlf_alive_ap;
+                ltlf_notalive_ap = '!' + ltlf_alive_ap;
             }
-            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
-            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
-            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
-            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
+            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_notalive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_notalive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_notalive_ap + ")|", ")");
+            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_notalive_ap + ")", "(");
             pf = spot::parse_infix_psl(ltlf_string);
-            sout << "    [LTLF Modelvariant: " + ltlf_string + "]";
+            sout << "    [LTLfl: " + ltlf_string + "]";
             syntaxOK = pf.errors.empty();
         }
     }
@@ -637,8 +648,8 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
 bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
         //alive U G(!alive): the 'U' makes that dead is required in all paths
-        std::string tracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
-        std::string formula_result = check_property(tracetodead, false, false, "", bdd, aut);
+        std::string istracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
+        std::string formula_result = check_property(istracetodead, LTL,false, "", bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
         return (found != std::string::npos);
     } else
@@ -664,16 +675,35 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
     bool tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f.empty()) break;
-        if (originalandltlf) {
-            formula_result = check_property(f, tracetodead, witness, "", bdd, pa_ptr->aut);
-            out << formula_result;
-        }
-        formula_result = check_property(f, tracetodead, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
-        out << formula_result;
-
+        if(ltlf_alive_ap.length() == 0){
+                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                out << formula_result;
+            }
+        else
+            if (originalandltlf) {
+                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                out << formula_result;
+                formula_result = check_property(f,  LTL_f, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                out << formula_result;
+                formula_result = check_property(f, LTL_sf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                out << formula_result;
+                formula_result = check_property(f,  LTL_lf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                out << formula_result;
+            }
+            else
+                if(tracetodead) {
+                    formula_result = check_property(f,  LTL_f, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    out << formula_result;
+                }
+                else {
+                    formula_result = check_property(f,  LTL_lf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    out << formula_result;
+                }
     }
     out << "=== Formula\n";  // add closing tag for formulas
 }
+
+
 /**
  *  Verifies whether a collection of  formulas has a valid LTL syntax
  * @param col_in            stream containing a collection of formulas
@@ -736,7 +766,7 @@ int main(int argc, char *argv[]) {
     std::string singleformula = getCmdOption(argc, argv, "--sf");
     std::string formulafile = getCmdOption(argc, argv, "--ff");
     std::string ltlf = getCmdOption(argc, argv, "--ltlf");
-    std::string ltl2f = getCmdOption(argc, argv, "--ltl2f");
+    std::string ltlxf = getCmdOption(argc, argv, "--ltlxf");
     std::string witness = getCmdOption(argc, argv, "--witnes", true);//deliberate missing last char
     std::string checkonlyformulas = getCmdOption(argc, argv, "--fonl", true);
     //std::string outfile = "" ; //getCmdOption(argc, argv, "--o");
@@ -773,8 +803,8 @@ int main(int argc, char *argv[]) {
 
     dowitness = (witness == "s");
     ltlf_alive_ap = "";
-    if (not ltl2f.empty()) {
-        ltlf_alive_ap = ltl2f;
+    if (not ltlxf.empty()) {
+        ltlf_alive_ap = ltlxf;
     } else if (not ltlf.empty()) {
         ltlf_alive_ap = ltlf;
     } else if (onlyformulasyntax) {
@@ -811,15 +841,15 @@ int main(int argc, char *argv[]) {
             if (!formulafilename.empty()) {
                 std::ifstream f_in;
                 f_in.open(formulafilename.c_str());
-                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
+                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
                                  std::cout);
             } else if (!formula.empty()) {
                 std::istringstream s_in;
                 s_in.str(formula);
-                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
+                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
                                  std::cout);
             } else
-                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltl2f.empty(), dowitness,
+                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
                                  std::cout);
         } else {
             std::cout << res << "\n";
