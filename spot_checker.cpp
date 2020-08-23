@@ -489,6 +489,7 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
     std::string weakUntil = " W ";
     std::string ltlf_notalive_ap;
     std::size_t found = ltlf_string.rfind(lastUntil); //by ltlf-design: there is always an Until
+    //check for false?
     switch (ltlftype) {
         case LTL :
             break;
@@ -599,7 +600,11 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
-            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+
+            if (found != std::string::npos) {//check for false?
+                ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            }
+
             sout << "    [LTLfs: " + ltlf_string + "]";
             std::string ltlf_notalive_ap;
             if (ltlf_alive_ap.at(0) == '!') {
