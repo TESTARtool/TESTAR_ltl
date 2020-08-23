@@ -31,9 +31,9 @@ namespace fs = std::experimental::filesystem;
 
 //consts
 #define LTL 'l'
-#define LTL_f 'f'
-#define LTL_sf 'm'
-#define LTL_lf 'c'
+#define LTLf 'f'
+#define LTLfs 'm'
+#define LTLfl 'c'
 
 
 // Globals
@@ -467,12 +467,12 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * for 'terminalmodels the formulas are converted to their LTLf variant \see custom_print
  *
  * @param formula           LTL formula to check
- * @param tracetodead       equivalent to model == dag
+ * @param ltlftype          subtype to be checked
  * @param witness           provide a witness (if formula PASSes or counterexample if formula FAILs )
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
  * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
  * @param aut               buchi automaton
- * @return                  multiline string with PASS or FAIL infomration, timing and counterexample traces.
+ * @return                  multiline string with PASS or FAIL information, timing and counterexample traces.
  */
 std::string check_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
                            spot::bdd_dict_ptr &bdd,
@@ -487,38 +487,32 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
 
     std::string lastUntil = " U ";
     std::string weakUntil = " W ";
-    std::size_t found ;
+    std::string ltlf_notalive_ap;
+    std::size_t found = ltlf_string.rfind(lastUntil); //by ltlf-design: there is always an Until
     switch (ltlftype) {
         case LTL :
             break;
-        case LTL_f :
+        case LTLf :
             pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLf: " + ltlf_string + "]";
             break;
-        case LTL_lf :
-             found = ltlf_string.rfind(lastUntil);
-            if (found != std::string::npos) { //equality should not occur
-                ltlf_string.replace(found, lastUntil.length(), weakUntil);
-                // check liveness in scc's, but allow dangling requests in final trace
-                if (ltlf_alive_ap.at(0) == '!') {
-                    ltlf_alive_ap=ltlf_alive_ap.substr(1);
-                }else{
-                    ltlf_alive_ap='!'+ltlf_alive_ap;}
-                findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_alive_ap + ")|", ")");
-                findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_alive_ap + ")|", ")");
-                findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_alive_ap + ")|", ")");
-                findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_alive_ap + ")", "(");
-                pf = spot::parse_infix_psl(ltlf_string);
-                sout << "    [LTLfs: " + ltlf_string + "]";
-            }
+        case LTLfl :
+            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            if (ltlf_alive_ap.at(0) == '!') {
+                ltlf_notalive_ap=ltlf_alive_ap.substr(1);
+            }else{
+                ltlf_notalive_ap='!'+ltlf_alive_ap;}
+            findClosingParenthesisAndInsert(ltlf_string, "F(", "(" + ltlf_notalive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_notalive_ap + ")|", ")");
+            findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_notalive_ap + ")|", ")");
+            findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_notalive_ap + ")", "(");
+            pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLfl: " + ltlf_string + "]";
             break;
-        case LTL_sf :
-             found = ltlf_string.rfind(lastUntil);
-            if (found != std::string::npos) { //equality should not occur
-                ltlf_string.replace(found, lastUntil.length(), weakUntil);
-                pf = spot::parse_infix_psl(ltlf_string);
-                sout << "    [LTLfl: " + ltlf_string + "]";
-            }
+        case LTLfs :
+            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            pf = spot::parse_infix_psl(ltlf_string);
+            sout << "    [LTLfs: " + ltlf_string + "]";
             break;
         default :
             sout << "ERROR, ltl subtype not defined";
@@ -600,14 +594,12 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
         if (ltlf_alive_ap.length() != 0) {
             spot::formula finitef = spot::from_ltlf(pf.f, ltlf_alive_ap.c_str());
             std::string ltlf_string = str_psl(finitef);
-            //pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLf: " + ltlf_string + "]";
 
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
             ltlf_string.replace(found, lastUntil.length(), weakUntil);
-            //pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLfs: " + ltlf_string + "]";
             std::string ltlf_notalive_ap;
             if (ltlf_alive_ap.at(0) == '!') {
@@ -619,14 +611,10 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
             findClosingParenthesisAndInsert(ltlf_string, "X(", "(" + ltlf_notalive_ap + ")|", ")");
             findClosingParenthesisAndInsert(ltlf_string, "U (", "(" + ltlf_notalive_ap + ")|", ")");
             findOpeningParenthesisAndInsert(ltlf_string, ") M", "|(" + ltlf_notalive_ap + ")", "(");
-            pf = spot::parse_infix_psl(ltlf_string);
             sout << "    [LTLfl: " + ltlf_string + "]";
-            syntaxOK = pf.errors.empty();
         }
     }
         sout << "\n";
-
-    spot::formula f = pf.f;
     sout << "=== ";
 
     if (!syntaxOK) {
@@ -683,20 +671,20 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
             if (originalandltlf) {
                 formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f,  LTL_f, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f, LTL_sf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = check_property(f, LTLfs, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f,  LTL_lf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
             }
             else
                 if(tracetodead) {
-                    formula_result = check_property(f,  LTL_f, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
                 else {
-                    formula_result = check_property(f,  LTL_lf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
     }
