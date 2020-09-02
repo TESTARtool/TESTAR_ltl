@@ -37,7 +37,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200823"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+const std::string version = "20200902"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
 std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
 /**
@@ -437,7 +437,9 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "  4. Example for translating G(p0 -> F(p1)):\n";
         std::cout << "     LTLf (G&V-2013) : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
         std::cout << "     LTLfs           : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
-        std::cout << "     LTLfl           : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "     LTLfl           : !dead & G(dead |(p0->F(dead | p1))) & (!dead W G(dead))\n";
+        std::cout << "     *Note: Currently the  essential part of LTLfl is implemented as F(dead | (p1 & !dead)) \n";
+        std::cout << "     which is logically equivalent to F(dead | p1). (~ program rewrites the LTLfs version).\n";
         std::cout << "     Semantically, the variants facilitate the following: \n";
         std::cout << "     LTLf (G&V-2013) : trace and DAG checking with LTL\n";
         std::cout << "     LTLfs           : safety checks on 'terminal' models with LTL\n";
