@@ -18,7 +18,8 @@ LTLF variant | use case
 LTLf (G&V-2013) | for plain traces or a DAG.  
 LTLfs           | for safety properties on models with terminal states.  
 LTLfl           | for liveness properties* on models with terminal states. 
-\* *Checked in non-trivial SCC's only and <u>NOT</u> in the finite suffix towards a terminal state*
+ *<i>Checked in non-trivial SCC's only and <u>NOT</u> in the finite suffix towards a terminal
+  state</i>
   
 Program version : 20200902
 
