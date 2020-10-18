@@ -334,7 +334,8 @@ void print_help(std::ostream &out) {
     out << "          uses '!dead' as default value in case there is no --ltl(x)f option supplied. LTL-Finite variants: \n";
     out << "          LTLf (G&V-2013) : for traces or a DAG.\n";
     out << "          LTLfs           : for safety properties on models with terminal states\n";
-    out << "          LTLfl           : for liveness properties (in SCC's) on models with terminal states.\n";
+    out << "          LTLfl           : for liveness properties* on models with terminal states.\n";
+    out << "          *Checked in non-trivial SCC's only and NOT in the finite suffix towards a terminal state\n";
     out << "--ltlf    optional.  usable for model-checking on finite LTL (~the automaton contains terminal states): \n";
     out << "          Model-Check with variant LTLf when the model is a trace otherwise the LTLfl variant.\n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
@@ -443,8 +444,8 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "     Semantically, the variants facilitate the following: \n";
         std::cout << "     LTLf (G&V-2013) : trace and DAG checking with LTL\n";
         std::cout << "     LTLfs           : safety checks on 'terminal' models with LTL\n";
-        std::cout << "     LTLfl           : liveness checks (in all SCC's) while allowing a dangling request\n";
-        std::cout << "                       in the finite suffix towards a terminal state\n";
+        std::cout << "     LTLfl           : for liveness properties* on models with terminal states.\n";
+        std::cout << "     *Checked in non-trivial SCC's only and NOT in the finite suffix towards a terminal state\n";
         std::cout << "  5. This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part\n";
     }
 }
