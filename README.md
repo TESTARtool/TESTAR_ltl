@@ -21,7 +21,7 @@ LTLfl           | for liveness properties* on models with terminal states.
  *<i>Checked in non-trivial SCC's only and <u>NOT</u> in the finite suffix towards a terminal
   state</i>
   
-Program version : 20200902
+Program version : 20201024
 
 ---
 #### Usage:  

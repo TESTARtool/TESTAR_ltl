@@ -13,21 +13,16 @@ cseng 2019-2020
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/translate.hh>
 #include <spot/twaalgos/emptiness.hh>
-#include <spot/twaalgos/hoa.hh>
+//#include <spot/twaalgos/hoa.hh>
 #include <spot/twa/bddprint.hh>
 #include <chrono>
 #include <ctime>
 #include <sstream>
 #include <fstream>
-
 #include<experimental/filesystem>
-
 namespace fs = std::experimental::filesystem;
-
 #include <unistd.h>
-#include <iomanip>      // std::setprecision
 #include <spot/tl/ltlf.hh>
-#include <regex>
 
 //consts
 #define LTL 'l'
@@ -37,7 +32,7 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200902"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+const std::string version = "20201024"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
 std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
 /**
@@ -758,7 +753,8 @@ int main(int argc, char *argv[]) {
     clock_start = std::chrono::system_clock::now();
     bdd = spot::make_bdd_dict(); //setup_spot
     std::string startLog = "=== LTL model-check Start Program version : " + version + "\n=== " + getCurrentLocalTime() +
-                           log_mem_usage() + "\n";
+                           log_mem_usage() + "\n=== SPOT Library version: " +spot::version()+"\n";
+
 
     std::string stdinput = getCmdOption(argc, argv, "--stdi", true); // use 'n' as value
     std::string automaton = getCmdOption(argc, argv, "--a");
