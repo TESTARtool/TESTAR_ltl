@@ -365,7 +365,7 @@ void print_help(std::ostream &out) {
  * @param ltlf_alive_ap if non empty this will write information on finite/terminal
  * @param dag           if the model is a dag
  */
-void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
+void print_automaton_info(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
     // partially from SPOT website. We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr &dict = aut->get_dict();
     std::cout << "Properties of Automaton:\n";
@@ -467,7 +467,7 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * Model checks a single LTL formula on the Buchi automaton
  * This function checks the syntax of the formula and
  * whether the atomic propositions of the formula occur in the automaton.
- * for 'terminalmodels the formulas are converted to their LTLf variant \see custom_print
+ * for 'terminalmodels the formulas are converted to their LTLf variant \see print_automaton_info
  *
  * @param formula           LTL formula to check
  * @param ltlftype          subtype to be checked
@@ -477,9 +477,9 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * @param aut               buchi automaton
  * @return                  multiline string with PASS or FAIL information, timing and counterexample traces.
  */
-std::string check_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
-                           spot::bdd_dict_ptr &bdd,
-                           spot::twa_graph_ptr &aut) {
+std::string modelcheck_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
+                                spot::bdd_dict_ptr &bdd,
+                                spot::twa_graph_ptr &aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -586,7 +586,7 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
  * @return              multiline string with the original formula,
  *                      LTLf variants and verdict if the formula is valid or not.
  */
-std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap) {
+std::string verify_syntax(std::string formula, std::string ltlf_alive_ap) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -646,7 +646,7 @@ bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot:
     if (ltlf_alive_ap.length() != 0) {
         //alive U G(!alive): the 'U' makes that !alive or dead is required in all paths.
         std::string istracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
-        std::string formula_result = check_property(istracetodead, LTL,false, "", bdd, aut);
+        std::string formula_result = modelcheck_property(istracetodead, LTL, false, "", bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
         return (found != std::string::npos);
     } else
@@ -663,37 +663,37 @@ bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot:
  * @param witness           ask for a witness (if formula PASSes or counterexample if formula FAILs )
  * @param out               stream for collection the results
  *
- * delegates checking of individual formulas to \see check_property
+ * delegates checking of individual formulas to \see modelcheck_property
  */
-void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
-                      std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
+void modelcheck_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
+                           std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
     std::string f;
     bool tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f.empty()) break;
         if(ltlf_alive_ap.length() == 0){
-                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                formula_result = modelcheck_property(f, LTL, witness, "", bdd, pa_ptr->aut);
                 out << formula_result;
             }
         else
             if (originalandltlf) {
-                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                formula_result = modelcheck_property(f, LTL, witness, "", bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = modelcheck_property(f, LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f, LTLfs, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = modelcheck_property(f, LTLfs, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = modelcheck_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
             }
             else
                 if(tracetodead) {
-                    formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = modelcheck_property(f, LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
                 else {
-                    formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = modelcheck_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
     }
@@ -702,23 +702,25 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
 
 
 /**
- *  Verifies whether a collection of  formulas has a valid LTL syntax
+ *  Verifies whether a collection of formulas has a valid LTL syntax
  * @param col_in            stream containing a collection of formulas
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of a model.
  * @param out               stream for collection the results
  *
  *  delegates checking of individual formulas to \see check_formula
  */
-void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
+void verify_syntax_collection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
     std::string formula_result;
     std::string f;
     while (getline(col_in, f)) {
         if (f.empty()) break;
-        formula_result = check_formulaproperty(f, ltlf_alive_ap);
+        formula_result = verify_syntax(f, ltlf_alive_ap);
         out << formula_result;
     }
     out << "=== Formula\n";  // add closing tag for formulas
 }
+
+
 
 /**
  * Entry point of the application:  Standard C/C++ routine \n
@@ -815,11 +817,11 @@ int main(int argc, char *argv[]) {
         if (!formulafilename.empty()) {
             std::ifstream f_in;
             f_in.open(formulafilename.c_str());
-            check_formulacollection(f_in, ltlf_alive_ap, std::cout);
+            verify_syntax_collection(f_in, ltlf_alive_ap, std::cout);
         } else {// !formula.empty())
             std::istringstream s_in;
             s_in.str(formula);
-            check_formulacollection(s_in, ltlf_alive_ap, std::cout);
+            verify_syntax_collection(s_in, ltlf_alive_ap, std::cout);
         }
     } else {
         if (automaton_filename.empty()) {
@@ -837,7 +839,7 @@ int main(int argc, char *argv[]) {
         if (res.empty()) {
             std::cout << "=== ";
             bool dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
-            custom_print(std::cout, pa->aut, 0, ltlf_alive_ap,dag);
+            print_automaton_info(std::cout, pa->aut, 0, ltlf_alive_ap, dag);
 
             std::string auttitle = getAutomatonTitle(pa->aut);
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
@@ -846,13 +848,13 @@ int main(int argc, char *argv[]) {
             if (!formulafilename.empty()) {
                 std::ifstream f_in;
                 f_in.open(formulafilename.c_str());
-                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
+                modelcheck_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
             } else if (!formula.empty()) {
                 std::istringstream s_in;
                 s_in.str(formula);
-                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
+                modelcheck_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
             } else
-                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
+                modelcheck_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
         } else {
             std::cout << res << "\n";
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
