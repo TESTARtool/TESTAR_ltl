@@ -637,13 +637,14 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
  * Checks whether the Model is a DAG with only a selfloop for terminal states
  *
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
+ *                          and FALSE on terminal states
  * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
  * @param aut               buchi automaton
  * @return                  False if ltlf_alive_ap is empty otherwise it wil check for DAG property
  */
 bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
-        //alive U G(!alive): the 'U' makes that dead is required in all paths
+        //alive U G(!alive): the 'U' makes that !alive or dead is required in all paths.
         std::string istracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
         std::string formula_result = check_property(istracetodead, LTL,false, "", bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
@@ -806,12 +807,21 @@ int main(int argc, char *argv[]) {
     } else if (onlyformulasyntax) {
         ltlf_alive_ap = "!dead";
     }
-
-    // commandline sanitation done
+    // *********** commandline sanitation done
 
     std::cout << startLog;
 
-    if (not onlyformulasyntax) {
+    if ( onlyformulasyntax) {
+        if (!formulafilename.empty()) {
+            std::ifstream f_in;
+            f_in.open(formulafilename.c_str());
+            check_formulacollection(f_in, ltlf_alive_ap, std::cout);
+        } else {// !formula.empty())
+            std::istringstream s_in;
+            s_in.str(formula);
+            check_formulacollection(s_in, ltlf_alive_ap, std::cout);
+        }
+    } else {
         if (automaton_filename.empty()) {
             streamAutomatonToFile(std::cin, copyofmodel);
         } else {// seems overhead to make a copy, but skipping this will end up in an exit code 139
@@ -833,43 +843,28 @@ int main(int argc, char *argv[]) {
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
             std::cout << "=== Automaton\n";
 
-
             if (!formulafilename.empty()) {
                 std::ifstream f_in;
                 f_in.open(formulafilename.c_str());
-                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
             } else if (!formula.empty()) {
                 std::istringstream s_in;
                 s_in.str(formula);
-                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
             } else
-                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,std::cout);
         } else {
             std::cout << res << "\n";
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
             std::cout << "=== Automaton\n";
         }
-        if (automaton_filename == copyofmodel) { //input was via stdin, so removing the output file
+        if (automaton_filename == copyofmodel) { // if automaton was provided then remove the copy after use.
             char *fnamearray = new char[copyofmodel.length() + 1];
             strcpy(fnamearray, copyofmodel.c_str());
             std::remove(fnamearray);
         }
-    } else {
-
-        if (!formulafilename.empty()) {
-            std::ifstream f_in;
-            f_in.open(formulafilename.c_str());
-            check_formulacollection(f_in, ltlf_alive_ap, std::cout);
-        } else if (!formula.empty()) {
-            std::istringstream s_in;
-            s_in.str(formula);
-            check_formulacollection(s_in, ltlf_alive_ap, std::cout);
-        } else
-            check_formulacollection(std::cin, ltlf_alive_ap, std::cout);
     }
+
     std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
     return 0;
 }
