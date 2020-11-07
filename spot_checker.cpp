@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "performance-for-range-copy"
+#pragma ide diagnostic ignored "performance-unnecessary-value-param"
 /** \file
 This TESTAR wrapper for interfacing to the SPOT library consists of a single C++ sourcecode file,
 with imperative function calls to subroutines.
@@ -13,21 +16,16 @@ cseng 2019-2020
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/translate.hh>
 #include <spot/twaalgos/emptiness.hh>
-#include <spot/twaalgos/hoa.hh>
+//#include <spot/twaalgos/hoa.hh>
 #include <spot/twa/bddprint.hh>
 #include <chrono>
 #include <ctime>
 #include <sstream>
 #include <fstream>
-
 #include<experimental/filesystem>
-
 namespace fs = std::experimental::filesystem;
-
 #include <unistd.h>
-#include <iomanip>      // std::setprecision
 #include <spot/tl/ltlf.hh>
-#include <regex>
 
 //consts
 #define LTL 'l'
@@ -37,9 +35,11 @@ namespace fs = std::experimental::filesystem;
 
 
 // Globals
-const std::string version = "20200823"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
+const std::string version = "20201024"; /**<  version of the application */ // NOLINT(cert-err58-cpp)
 std::chrono::system_clock::time_point clock_start, clock_end; /**<  the clock variables are used to measure the runtime of specified actions */ // NOLINT(cert-err58-cpp)
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCDFAInspection"
 /**
  * Find the position of the matching closing parenthesis ')'
  * @param data      string to search
@@ -63,6 +63,7 @@ int findClosingParenthesis(std::string &data, int openPos) {
     }
     return closePos;
 }
+#pragma clang diagnostic pop
 /**
  * Find the position of the matching opening parenthesis '('
  * (search from right to left)
@@ -112,6 +113,8 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
     }
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
 /**
  * Find any matching substring and surround all occurrences with 'replacestring' + 'substring' + 'closing'
  *
@@ -141,6 +144,9 @@ void findClosingParenthesisAndInsert(std::string &data, std::string toSearch, st
         pos = data.find(toSearch, pos + toSearch.size() + replaceStr.size() + orginalblock.size() + closing.size());
     }
 }
+#pragma clang diagnostic pop
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
 /**
  * Find any matching substring and surround all occurrences with 'replacestring' + 'substring' + 'closing'
  * (search from right to left)
@@ -171,6 +177,7 @@ void findOpeningParenthesisAndInsert(std::string &data, std::string toSearch, st
                         bracketpos + opening.size() + orginalblock.size() + replaceStr.size() + toSearch.size());
     }
 }
+#pragma clang diagnostic pop
 
 /**
  * Get the system time as a string
@@ -240,6 +247,8 @@ std::string log_mem_usage()
 }
 
 //
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "abseil-string-find-startswith"
 /**
  * Simple commandline parser.
  * @param argc number of arguments on the commandline
@@ -275,6 +284,7 @@ std::string getCmdOption(int argc, char *argv[], const std::string &option, bool
     }
     return cmd;
 }
+#pragma clang diagnostic pop
 
 /**
  * Writes a stream to a file. The stream will stop after the string "EOF_HOA" or the last line
@@ -334,7 +344,8 @@ void print_help(std::ostream &out) {
     out << "          uses '!dead' as default value in case there is no --ltl(x)f option supplied. LTL-Finite variants: \n";
     out << "          LTLf (G&V-2013) : for traces or a DAG.\n";
     out << "          LTLfs           : for safety properties on models with terminal states\n";
-    out << "          LTLfl           : for liveness properties (in SCC's) on models with terminal states.\n";
+    out << "          LTLfl           : for liveness properties* on models with terminal states.\n";
+    out << "          *Checked in non-trivial SCC's only and NOT in the finite suffix towards a terminal state\n";
     out << "--ltlf    optional.  usable for model-checking on finite LTL (~the automaton contains terminal states): \n";
     out << "          Model-Check with variant LTLf when the model is a trace otherwise the LTLfl variant.\n";
     out << "          Weaves an atomic proposition into the formula to label the 'alive' part. \n";
@@ -364,7 +375,7 @@ void print_help(std::ostream &out) {
  * @param ltlf_alive_ap if non empty this will write information on finite/terminal
  * @param dag           if the model is a dag
  */
-void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
+void print_automaton_info(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0, std::string ltlf_alive_ap = "", bool dag = false) {
     // partially from SPOT website. We need the dictionary to print the BDDs that label the edges
     const spot::bdd_dict_ptr &dict = aut->get_dict();
     std::cout << "Properties of Automaton:\n";
@@ -437,12 +448,14 @@ void custom_print(std::ostream &out, spot::twa_graph_ptr &aut, int verbosity = 0
         std::cout << "  4. Example for translating G(p0 -> F(p1)):\n";
         std::cout << "     LTLf (G&V-2013) : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead U G(dead))\n";
         std::cout << "     LTLfs           : !dead & G(dead |(p0->F(p1 & !dead))) & (!dead W G(dead))\n";
-        std::cout << "     LTLfl           : !dead & G(dead |(p0->F(dead| p1))) & (!dead W G(dead))\n";
+        std::cout << "     LTLfl           : !dead & G(dead |(p0->F(dead | p1))) & (!dead W G(dead))\n";
+        std::cout << "     *Note: Currently the  essential part of LTLfl is implemented as F(dead | (p1 & !dead)) \n";
+        std::cout << "     which is logically equivalent to F(dead | p1). (~ program rewrites the LTLfs version).\n";
         std::cout << "     Semantically, the variants facilitate the following: \n";
         std::cout << "     LTLf (G&V-2013) : trace and DAG checking with LTL\n";
         std::cout << "     LTLfs           : safety checks on 'terminal' models with LTL\n";
-        std::cout << "     LTLfl           : liveness checks (in all SCC's) while allowing a dangling request\n";
-        std::cout << "                       in the finite suffix towards a terminal state\n";
+        std::cout << "     LTLfl           : for liveness properties* on models with terminal states.\n";
+        std::cout << "     *Checked in non-trivial SCC's only and NOT in the finite suffix towards a terminal state\n";
         std::cout << "  5. This automaton has " << (dag ? "no " : "") << "cycles in the 'alive' part\n";
     }
 }
@@ -460,11 +473,12 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
     }
 }
 
+
 /**
  * Model checks a single LTL formula on the Buchi automaton
  * This function checks the syntax of the formula and
  * whether the atomic propositions of the formula occur in the automaton.
- * for 'terminalmodels the formulas are converted to their LTLf variant \see custom_print
+ * for 'terminalmodels the formulas are converted to their LTLf variant \see print_automaton_info
  *
  * @param formula           LTL formula to check
  * @param ltlftype          subtype to be checked
@@ -474,9 +488,9 @@ std::string getAutomatonTitle(spot::twa_graph_ptr &aut) {
  * @param aut               buchi automaton
  * @return                  multiline string with PASS or FAIL information, timing and counterexample traces.
  */
-std::string check_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
-                           spot::bdd_dict_ptr &bdd,
-                           spot::twa_graph_ptr &aut) {
+std::string model_check_property(std::string formula, char ltlftype, bool witness, std::string ltlf_alive_ap,
+                                 spot::bdd_dict_ptr &bdd,
+                                 spot::twa_graph_ptr &aut) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -489,6 +503,7 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
     std::string weakUntil = " W ";
     std::string ltlf_notalive_ap;
     std::size_t found = ltlf_string.rfind(lastUntil); //by ltlf-design: there is always an Until
+    //check for false?
     switch (ltlftype) {
         case LTL :
             break;
@@ -573,6 +588,7 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
     }
     return sout.str();
 }
+
 /**
  * Verifies whether the formula has a valid LTL syntax
  *
@@ -582,7 +598,7 @@ std::string check_property(std::string formula, char ltlftype, bool witness, std
  * @return              multiline string with the original formula,
  *                      LTLf variants and verdict if the formula is valid or not.
  */
-std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap) {
+std::string verify_syntax(std::string formula, std::string ltlf_alive_ap) {
 
     std::ostringstream sout;  //needed for capturing output of run.
     sout << "=== Formula\n";
@@ -599,7 +615,11 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
             std::string lastUntil = " U ";
             std::string weakUntil = " W ";
             std::size_t found = ltlf_string.rfind(lastUntil); //find must be true by design
-            ltlf_string.replace(found, lastUntil.length(), weakUntil);
+
+            if (found != std::string::npos) {//check for false?
+                ltlf_string.replace(found, lastUntil.length(), weakUntil);
+            }
+
             sout << "    [LTLfs: " + ltlf_string + "]";
             std::string ltlf_notalive_ap;
             if (ltlf_alive_ap.at(0) == '!') {
@@ -629,15 +649,16 @@ std::string check_formulaproperty(std::string formula, std::string ltlf_alive_ap
  * Checks whether the Model is a DAG with only a selfloop for terminal states
  *
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of the model.
+ *                          and FALSE on terminal states
  * @param bdd               binary decision diagram that hosts the atomic propositions of the automaton
  * @param aut               buchi automaton
  * @return                  False if ltlf_alive_ap is empty otherwise it wil check for DAG property
  */
 bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot::twa_graph_ptr &aut) {
     if (ltlf_alive_ap.length() != 0) {
-        //alive U G(!alive): the 'U' makes that dead is required in all paths
+        //alive U G(!alive): the 'U' makes that !alive or dead is required in all paths.
         std::string istracetodead = ltlf_alive_ap + " U G(!" + ltlf_alive_ap + ")";
-        std::string formula_result = check_property(istracetodead, LTL,false, "", bdd, aut);
+        std::string formula_result = model_check_property(istracetodead, LTL, false, "", bdd, aut);
         std::size_t found = formula_result.rfind("PASS");
         return (found != std::string::npos);
     } else
@@ -654,37 +675,37 @@ bool model_has_noloops(std::string ltlf_alive_ap, spot::bdd_dict_ptr &bdd, spot:
  * @param witness           ask for a witness (if formula PASSes or counterexample if formula FAILs )
  * @param out               stream for collection the results
  *
- * delegates checking of individual formulas to \see check_property
+ * delegates checking of individual formulas to \see model_check_property
  */
-void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
-                      std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
+void model_check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parsed_aut_ptr &pa_ptr,
+                            std::string ltlf_alive_ap, bool originalandltlf, bool witness, std::ostream &out) {
     std::string formula_result;
     std::string f;
     bool tracetodead = model_has_noloops(ltlf_alive_ap, bdd, pa_ptr->aut);
     while (getline(col_in, f)) {
         if (f.empty()) break;
         if(ltlf_alive_ap.length() == 0){
-                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                formula_result = model_check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
                 out << formula_result;
             }
         else
             if (originalandltlf) {
-                formula_result = check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
+                formula_result = model_check_property(f, LTL, witness, "", bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = model_check_property(f, LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f, LTLfs, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = model_check_property(f, LTLfs, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
-                formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                formula_result = model_check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                 out << formula_result;
             }
             else
                 if(tracetodead) {
-                    formula_result = check_property(f,  LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = model_check_property(f, LTLf, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
                 else {
-                    formula_result = check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
+                    formula_result = model_check_property(f, LTLfl, witness, ltlf_alive_ap, bdd, pa_ptr->aut);
                     out << formula_result;
                 }
     }
@@ -693,23 +714,25 @@ void check_collection(std::istream &col_in, spot::bdd_dict_ptr &bdd, spot::parse
 
 
 /**
- *  Verifies whether a collection of  formulas has a valid LTL syntax
+ *  Verifies whether a collection of formulas has a valid LTL syntax
  * @param col_in            stream containing a collection of formulas
  * @param ltlf_alive_ap     the identifier  of the property that is TRUE on the alive part of a model.
  * @param out               stream for collection the results
  *
  *  delegates checking of individual formulas to \see check_formula
  */
-void check_formulacollection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
+void verify_syntax_collection(std::istream &col_in, std::string ltlf_alive_ap, std::ostream &out) {
     std::string formula_result;
     std::string f;
     while (getline(col_in, f)) {
         if (f.empty()) break;
-        formula_result = check_formulaproperty(f, ltlf_alive_ap);
+        formula_result = verify_syntax(f, ltlf_alive_ap);
         out << formula_result;
     }
     out << "=== Formula\n";  // add closing tag for formulas
 }
+
+
 
 /**
  * Entry point of the application:  Standard C/C++ routine \n
@@ -747,7 +770,8 @@ int main(int argc, char *argv[]) {
     clock_start = std::chrono::system_clock::now();
     bdd = spot::make_bdd_dict(); //setup_spot
     std::string startLog = "=== LTL model-check Start Program version : " + version + "\n=== " + getCurrentLocalTime() +
-                           log_mem_usage() + "\n";
+                           log_mem_usage() + "\n=== SPOT Library version: " +spot::version()+"\n";
+
 
     std::string stdinput = getCmdOption(argc, argv, "--stdi", true); // use 'n' as value
     std::string automaton = getCmdOption(argc, argv, "--a");
@@ -798,12 +822,21 @@ int main(int argc, char *argv[]) {
     } else if (onlyformulasyntax) {
         ltlf_alive_ap = "!dead";
     }
-
-    // commandline sanitation done
+    // *********** commandline sanitation done
 
     std::cout << startLog;
 
-    if (not onlyformulasyntax) {
+    if ( onlyformulasyntax) {
+        if (!formulafilename.empty()) {
+            std::ifstream f_in;
+            f_in.open(formulafilename.c_str());
+            verify_syntax_collection(f_in, ltlf_alive_ap, std::cout);
+        } else {// !formula.empty())
+            std::istringstream s_in;
+            s_in.str(formula);
+            verify_syntax_collection(s_in, ltlf_alive_ap, std::cout);
+        }
+    } else {
         if (automaton_filename.empty()) {
             streamAutomatonToFile(std::cin, copyofmodel);
         } else {// seems overhead to make a copy, but skipping this will end up in an exit code 139
@@ -819,49 +852,36 @@ int main(int argc, char *argv[]) {
         if (res.empty()) {
             std::cout << "=== ";
             bool dag = model_has_noloops(ltlf_alive_ap, bdd, pa->aut);
-            custom_print(std::cout, pa->aut, 0, ltlf_alive_ap,dag);
+            print_automaton_info(std::cout, pa->aut, 0, ltlf_alive_ap, dag);
 
             std::string auttitle = getAutomatonTitle(pa->aut);
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
             std::cout << "=== Automaton\n";
 
-
             if (!formulafilename.empty()) {
                 std::ifstream f_in;
                 f_in.open(formulafilename.c_str());
-                check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                model_check_collection(f_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
             } else if (!formula.empty()) {
                 std::istringstream s_in;
                 s_in.str(formula);
-                check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                model_check_collection(s_in, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
             } else
-                check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness,
-                                 std::cout);
+                model_check_collection(std::cin, bdd, pa, ltlf_alive_ap, not ltlxf.empty(), dowitness, std::cout);
         } else {
             std::cout << res << "\n";
             std::cout << "=== " << log_elapsedtime() << log_mem_usage() << "\n";
             std::cout << "=== Automaton\n";
         }
-        if (automaton_filename == copyofmodel) { //input was via stdin, so removing the output file
+        if (automaton_filename == copyofmodel) { // if automaton was provided then remove the copy after use.
             char *fnamearray = new char[copyofmodel.length() + 1];
             strcpy(fnamearray, copyofmodel.c_str());
             std::remove(fnamearray);
         }
-    } else {
-
-        if (!formulafilename.empty()) {
-            std::ifstream f_in;
-            f_in.open(formulafilename.c_str());
-            check_formulacollection(f_in, ltlf_alive_ap, std::cout);
-        } else if (!formula.empty()) {
-            std::istringstream s_in;
-            s_in.str(formula);
-            check_formulacollection(s_in, ltlf_alive_ap, std::cout);
-        } else
-            check_formulacollection(std::cin, ltlf_alive_ap, std::cout);
     }
+
     std::cout << "=== LTL model-check End\n=== " << log_elapsedtime() << log_mem_usage() << "\n";
     return 0;
 }
+
+//#pragma clang diagnostic pop

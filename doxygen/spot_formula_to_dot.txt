@@ -1,0 +1,75 @@
+
+/** \page ast_example MWE of the spot_formula_to_dot utility.
+
+A formula is convert to an Abstract Syntax Tree (AST). The AST, actually a reduced tree (a DAG) is generated in .dot format.\n
+The name of the graph in the dot file is a copy of the formula string.\n
+The dot format facilitates the user to print (PDF, PNG) or analyze the AST with Graphviz commands.
+The output  consist of  multiple graphs in case a formula file is provided!
+
+the formula can be converted to .dot with <b> ./spot_formula_to_dot --sf 'G(a->Fb)|F!a' >sample.dot</b>\n
+the sample.dot  content will look like:
+\code{.cpp}
+    digraph "AST_for_formula_1: G(a -> Fb) | F!a" {
+      0 [label="Or"];
+      1 [label="G"];
+      2 [label="Implies"];
+      2 -> 3 [taillabel="L"];
+      4 [label="F"];
+      4 -> 5;
+      2 -> 4 [taillabel="R"];
+      1 -> 2;
+      0 -> 1;
+      6 [label="F"];
+      7 [label="Not"];
+      7 -> 3;
+      6 -> 7;
+      0 -> 6;
+      subgraph atoms {
+         rank=sink;
+        3 [label="a", shape=box];
+        5 [label="b", shape=box];
+      }
+    }
+\endcode
+
+the Image will look like:
+\dot
+digraph "AST_for_formula_1: G(a -> Fb) | F!a" {
+  0 [label="Or"];
+  1 [label="G"];
+  2 [label="Implies"];
+  2 -> 3 [taillabel="L"];
+  4 [label="F"];
+  4 -> 5;
+  2 -> 4 [taillabel="R"];
+  1 -> 2;
+  0 -> 1;
+  6 [label="F"];
+  7 [label="Not"];
+  7 -> 3;
+  6 -> 7;
+  0 -> 6;
+  subgraph atoms {
+     rank=sink;
+    3 [label="a", shape=box];
+    5 [label="b", shape=box];
+  }
+}
+\enddot
+
+
+
+E.g. the number of nodes and edges in the tree can be calculated with the "gvpr -f <config file> <dot file>". see [Graphviz gvpr documentation](http://graphviz.org/pdf/gvpr.1.pdf) for all features.\n
+config text file is:
+\code
+    "BEG_G {
+        int n = nNodes($G);
+        int e = nEdges($G);
+        printf("There are %d nodes and %d edges in %s\n", n, e, $G.name);
+     }"
+\endcode
+The result of the gvpr command on the sample.dot file wil become:
+"There are 8 nodes and 8 edges in AST_for_formula_1: G(a -> Fb) | F!a"
+
+*/
+

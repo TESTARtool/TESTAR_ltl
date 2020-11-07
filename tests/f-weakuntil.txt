@@ -2,9 +2,14 @@ p0 W p1
 p0 R p1
 p0 M p1
 Fp0
+false
+0
 U p0
 p0
 G p0
+X p0
+G(p0->F p1)
+[] p0
 F(p0 W p1)
 p0 W (Fp1)
 
